@@ -170,12 +170,14 @@ begin
 				io_re <= '1' after delay;
 			end if;
 		when S_IN_STORE =>
-			f.state <= S_A after delay;
+			f.state <= S_NJMP after delay;
 			we <= '1' after delay;
 		when S_OUT =>
 			if obsy = '0' then
 				f.state <= S_A after delay;
 				io_we <= '1' after delay;
+				a <= c.pc after delay;
+				re <= '1' after delay;
 			end if;
 		when S_HALT =>
 			halt <= '1' after delay;
