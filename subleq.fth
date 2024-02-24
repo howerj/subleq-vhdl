@@ -5,6 +5,8 @@ defined eforth [if] ' ) <ok> ! [then] ( Turn off ok prompt )
 \ Email:   howe.r.j.89@gmail.com
 \ Repo:    <https://github.com/howerj/subleq>
 \
+\ **MODIFIED FOR <https://github.com/howerj/subleq-vhdl>**
+\
 \ References:
 \
 \ - <https://en.wikipedia.org/wiki/Threaded_code>
@@ -83,9 +85,9 @@ defined eforth [if] ' ) <ok> ! [then] ( Turn off ok prompt )
 \ a Forth interpreter from scratch.
 \
 only forth definitions hex
-1 constant opt.multi      ( Add in large "pause" primitive )
-1 constant opt.editor     ( Add in Text Editor )
-1 constant opt.info       ( Add info printing function )
+0 constant opt.multi      ( Add in large "pause" primitive )
+0 constant opt.editor     ( Add in Text Editor )
+0 constant opt.info       ( Add info printing function )
 0 constant opt.generate-c ( Generate C code )
 0 constant opt.better-see ( Replace 'see' with better version )
 0 constant opt.control    ( Add in more control structures )
@@ -95,13 +97,13 @@ only forth definitions hex
 0 constant opt.sm-vm-err  ( Smaller VM error message )
 0 constant opt.optimize   ( Enable extra optimization )
 1 constant opt.divmod     ( Use "opDivMod" primitive )
-1 constant opt.self       ( Enable self-interpreter )
+0 constant opt.self       ( Enable self-interpreter )
 : sys.echo-off 1 or ; ( bit #1 = turn echoing chars off )
 : sys.cksum    2 or ; ( bit #2 = turn checksumming on )
 : sys.info     4 or ; ( bit #3 = print info msg on startup )
 : sys.eof      8 or ; ( bit #4 = die if received EOF )
 : sys.warnv  $10 or ; ( bit #5 = warn if virtualized )
-0 ( sys.cksum ) sys.info sys.eof sys.echo-off sys.warnv constant opt.sys
+0 ( sys.cksum ) sys.info constant opt.sys
 defined (order) 0= [if]
 : (order) ( w wid*n n -- wid*n w n )
   dup if
@@ -1453,7 +1455,7 @@ opt.self [if]
   [ primitive ] literal @ 2* dup here swap - cksum
   [ check ] literal @ <> if ." bad cksum" bye then ( oops... )
   [ {options} ] literal @ #2 xor [ {options} ] literal !
-  then quit ;s ( call the interpreter loop AKA "quit" )
+  then ok quit ;s ( call the interpreter loop AKA "quit" )
 opt.multi [if]
 :s task: ( "name" -- : create a named task )
   create here b/buf allot 2/ task-init ;s
