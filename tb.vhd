@@ -21,7 +21,8 @@ architecture testing of tb is
 	constant baud:                     positive         := 115200;
 	constant configuration_file_name:  string           := "tb.cfg";
 	--constant subleq_image_hex_file:    string           := "subleq.hex";
-	constant subleq_image_hex_file:    string           := "hi.hex";
+	--constant subleq_image_hex_file:    string           := "hi.hex";
+	constant subleq_image_hex_file:    string           := "hello.hex";
 	constant N:                        positive         := 16;
 
 	signal stop:   boolean    := false;

@@ -5,6 +5,7 @@ USB?=/dev/ttyUSB0
 BAUD?=115200
 DIFF?=vimdiff
 IMAGE=subleq
+IMAGE=hello
 #BAUD?=9600
 
 .PHONY: all run diff simulation viewer clean documentation

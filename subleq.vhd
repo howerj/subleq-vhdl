@@ -62,7 +62,7 @@ architecture rtl of subleq is
 
 	signal c, f: registers_t := registers_default;
 	signal neg1, leq, stop: std_ulogic := '0';
-	signal res, npc: std_ulogic_vector(N - 1 downto 0) := (others => '0');
+	signal sub, npc: std_ulogic_vector(N - 1 downto 0) := (others => '0');
 
 	constant AZ: std_ulogic_vector(N - 1 downto 0) := (others => '0');
 	constant AO: std_ulogic_vector(N - 1 downto 0) := (others => '1');
@@ -70,7 +70,7 @@ begin
 	npc <= std_ulogic_vector(unsigned(c.pc) + 1) after delay;
 	neg1 <= '1' when i = AO else '0' after delay;
 	stop <= '1' when c.pc(c.pc'high) = '1' else '0' after delay;
-	res <= std_ulogic_vector(unsigned(c.lb) - unsigned(c.la)) after delay;
+	sub <= std_ulogic_vector(unsigned(c.lb) - unsigned(c.la)) after delay;
 	leq <= '1' when c.res(c.res'high) = '1' or c.res = AZ else '0' after delay;
 	o <= c.res after delay;
 	obyte <= c.la(obyte'range) after delay;
@@ -89,7 +89,7 @@ begin
 		end if;
 	end process;
 
-	process (c, i, npc, neg1, leq, res, ibyte, obsy, ihav, pause, stop) begin
+	process (c, i, npc, neg1, leq, sub, ibyte, obsy, ihav, pause, stop) begin
 		f <= c after delay;
 		halt <= '0' after delay;
 		io_we <= '0' after delay;
@@ -134,10 +134,11 @@ begin
 		when S_LB =>
 			f.state <= S_RESULT after delay;
 			f.lb <= i after delay;
+			a <= c.b after delay;
 			re <= '1' after delay;
 		when S_RESULT =>
 			f.state <= S_STORE after delay;
-			f.res <= res after delay;
+			f.res <= sub after delay;
 			a <= c.b after delay;
 			if c.a = AO then
 				f.state <= S_IN after delay;
@@ -148,6 +149,7 @@ begin
 			end if;
 		when S_STORE =>
 			f.state <= S_NJMP after delay;
+			a <= c.b after delay;
 			we <= '1' after delay;
 			if leq = '1' then
 				f.state <= S_JMP after delay;
@@ -159,7 +161,6 @@ begin
 			re <= '1' after delay;
 		when S_NJMP =>
 			f.state <= S_A after delay;
-			a <= c.pc after delay;
 			re <= '1' after delay;
 		when S_IN =>
 			a <= c.b after delay; -- hold address
@@ -173,11 +174,11 @@ begin
 			f.state <= S_NJMP after delay;
 			we <= '1' after delay;
 		when S_OUT =>
+			a <= c.pc after delay;
+			re <= '1' after delay;
 			if obsy = '0' then
 				f.state <= S_A after delay;
 				io_we <= '1' after delay;
-				a <= c.pc after delay;
-				re <= '1' after delay;
 			end if;
 		when S_HALT =>
 			halt <= '1' after delay;
