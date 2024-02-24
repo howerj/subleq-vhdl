@@ -10,7 +10,9 @@ gtkwave::/View/Show_Filled_High_Values 1
 set names {
 	top.tb.rst
 	top.tb.clk
-	top.tb.uut.cpu.a
+	top.tb.uut.cpu.a[15:0]
+	top.tb.uut.cpu.o[15:0]
+	top.tb.uut.cpu.i[15:0]
 	top.tb.uut.cpu.c.state
 	top.tb.uut.cpu.c.a[15:0]
 	top.tb.uut.cpu.c.la[15:0]
@@ -20,6 +22,10 @@ set names {
 	top.tb.uut.cpu.c.pc[15:0]
 	top.tb.uut.cpu.c.input
 	top.tb.uut.cpu.c.output
+	top.tb.uut.cpu.io_re
+	top.tb.uut.cpu.io_we
+	top.tb.uut.cpu.re
+	top.tb.uut.cpu.we
 	top.tb.tx
 	top.tb.rx
 }

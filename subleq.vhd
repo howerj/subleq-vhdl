@@ -30,7 +30,7 @@ entity subleq is
 end;
 
 architecture rtl of subleq is
-	type state_t is (S_RESET, S_A, S_LA, S_B, S_LB, S_C, S_NJMP, S_IN, S_OUT, S_HALT);
+	type state_t is (S_RESET, S_A, S_LA, S_B, S_LB, S_C, S_NJMP, S_STORE, S_IN, S_OUT, S_HALT);
 
 	type registers_t is record
 		a:  std_ulogic_vector(N - 1 downto 0);
@@ -39,6 +39,7 @@ architecture rtl of subleq is
 		lb: std_ulogic_vector(N - 1 downto 0);
 		c:  std_ulogic_vector(N - 1 downto 0);
 		pc: std_ulogic_vector(N - 1 downto 0);
+		res: std_ulogic_vector(N - 1 downto 0);
 		state:  state_t;
 		input: std_ulogic;
 		output: std_ulogic;
@@ -51,6 +52,7 @@ architecture rtl of subleq is
 		lb => (others => '0'),
 		c  => (others => '0'),
 		pc => (others => '0'),
+		res => (others => '0'),
 		state  => S_RESET,
 		input  => '0',
 		output => '0'
@@ -100,6 +102,7 @@ begin
 			f.state <= S_A after delay;
 		when S_A =>
 			f.a <= i after delay;
+			f.input <= '0' after delay;
 			if stop = '1' then
 				f.state <= S_HALT after delay;
 			elsif neg1 = '1' then
@@ -109,7 +112,6 @@ begin
 				f.state <= S_LA after delay;
 				re <= '1' after delay;
 				a <= i after delay;
-				f.input <= '0' after delay;
 			end if;
 		when S_LA =>
 			f.state <= S_B after delay;
@@ -128,12 +130,14 @@ begin
 				a <= i after delay;
 			end if;
 		when S_LB =>
-			if leq = '1' then
+			f.pc <= npc after delay;
+			f.res <= res after delay;
+			if c.input = '1' then
+				f.state <= S_IN after delay;
+			elsif leq = '0' then
 				f.state <= S_C after delay;
 				re <= '1' after delay;
-				f.pc <= npc after delay;
 			else
-				f.pc <= npc after delay;
 				f.state <= S_NJMP after delay;
 			end if;
 		when S_C =>
@@ -145,11 +149,22 @@ begin
 			f.pc <= npc after delay;
 		when S_IN =>
 			if ihav = '1' then
-				f.state <= S_A after delay;
+				f.pc <= npc after delay;
+				f.state <= S_STORE after delay;
+				io_re <= '1' after delay;
+				f.res <= (others => '0');
+				f.res(ibyte'range) <= ibyte;
+				a <= f.lb after delay;
 			end if;
+		when S_STORE =>
+			f.state <= S_NJMP after delay;
+			o <= f.res after delay;
+			we <= '1' after delay;
 		when S_OUT =>
 			if obsy = '0' then
-				f.state <= S_A after delay;
+				f.state <= S_NJMP after delay;
+				io_we <= '1' after delay;
+				obyte <= c.la(obyte'range);
 			end if;
 		when S_HALT =>
 			halt <= '1' after delay;

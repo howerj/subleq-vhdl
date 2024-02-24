@@ -55,6 +55,8 @@ architecture rtl of top is
 	signal bsy, hav, re, we, io_re, io_we: std_ulogic := 'X';
 	signal obyte, ibyte: std_ulogic_vector(7 downto 0) := (others => 'X');
 begin
+	hav <= not rx_fifo_empty;
+
 	cpu: entity work.subleq
 		generic map (
 			asynchronous_reset => g.asynchronous_reset,
@@ -64,17 +66,18 @@ begin
 		port map (
 			clk => clk, rst => rst,
 			-- synthesis translate_off
-			halt => halt,
-			pause => '0',
+			halt  => halt,
 			-- synthesis translate_on
-			i => i,
-			o => o, a => a, 
-			obsy => bsy,
-			ihav => hav,
+			pause => '0',
+			i     => i,
+			o     => o, 
+			a     => a, 
+			obsy  => bsy,
+			ihav  => hav,
 			io_re => io_re,
 			io_we => io_we,
-			re => re,
-			we => we,
+			re    => re,
+			we    => we,
 			obyte => obyte,
 			ibyte => ibyte
 		);
@@ -94,7 +97,6 @@ begin
 			din  => o,
 			dout => i);
 
-	hav <= '1' when rx_fifo_empty = '0' else '0';
 
 	uart: entity work.uart_top
 		generic map (

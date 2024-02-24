@@ -60,8 +60,7 @@ SOURCES = \
 	top.vhd \
 	subleq.vhd \
 	uart.vhd \
-	util.vhd \
-	peripherals.vhd
+	util.vhd
 
 OBJECTS = ${SOURCES:.vhd=.o}
 
