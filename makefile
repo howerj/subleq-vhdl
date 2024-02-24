@@ -36,16 +36,18 @@ subleq: subleq.c
 
 uart.o: uart.vhd util.o
 
-peripherals.o: peripherals.vhd uart.o util.o
 
-top.o: top.vhd peripherals.o subleq.o util.o uart.o
+top.o: top.vhd subleq.o util.o uart.o
 
-tb.o: tb.vhd subleq.o peripherals.o top.o
+tb.o: tb.vhd subleq.o top.o
 
-tb: tb.o subleq.o peripherals.o top.o
+tb: tb.o subleq.o top.o
 	ghdl -e $@
 
-tb.ghw: tb tb.conf subleq.hex
+subleq.hex: subleq.dec hex
+	./hex subleq.dec > $@
+
+tb.ghw: tb tb.cfg subleq.hex
 	ghdl -r $< --wave=$<.ghw --max-stack-alloc=16384 --ieee-asserts=disable
 
 SOURCES = \
@@ -153,4 +155,5 @@ postsyn:
 
 clean:
 	git clean -fdx .
+
 

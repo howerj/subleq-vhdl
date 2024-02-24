@@ -19,6 +19,14 @@ a new platform.
 There is a [simulator written in C](subleq.c) that can be used
 to run the [eForth image](subleq.dec).
 
+## TODO
+
+* [ ] Do core implementation
+* [ ] Make small SUBLEQ test programs
+* [ ] Get implementation working in simulator with test programs
+* [ ] Make cutdown and special SUBLEQ eForth image for the smaller (16KiB) BRAM
+* [ ] Get implementation working in hardware
+
 ## Other SUBLEQ projects
 
 * <https://github.com/howerj/subleq>
