@@ -21,11 +21,22 @@ to run the [eForth image](subleq.dec).
 
 ## TODO
 
-* [ ] Do core implementation
-* [ ] Make small SUBLEQ test programs
+* [x] Do core implementation
+  * [ ] Debug application
+* [x] Make small SUBLEQ test programs
 * [ ] Get implementation working in simulator with test programs
+  * [x] `hi.dec`
+  * [x] `hello.dec`
+  * [ ] `echo.dec`
+  * [ ] `self.dec` with `hi.dec`
+  * [-] `subleq.dec` (eForth interpreter)
+    * [x] Test output
+    * [ ] Test input (requires better test bench)
+* Improve test bench
+  * [ ] Add more run time configuration options
+  * [ ] Add a UART that can print to STDOUT and read from STDIN (or a FILE)
 * [x] Make cut-down and special SUBLEQ eForth image for the smaller (16KiB) BRAM
-* [ ] Get implementation working in hardware
+* [ ] Get implementation working in hardware (need a board for this)
 * [ ] Find way of interacting with other hardware
 * [ ] Optimize SUBLEQ design for slice area (and speed if possible)
 

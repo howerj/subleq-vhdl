@@ -27,10 +27,11 @@ set names {
 	top.tb.uut.cpu.npc[15:0]
 	top.tb.uut.cpu.leq
 	top.tb.uut.cpu.neg1
-	top.tb.uut.cpu.io_re
-	top.tb.uut.cpu.io_we
 	top.tb.uut.cpu.re
 	top.tb.uut.cpu.we
+	top.tb.uut.cpu.io_re
+	top.tb.uut.cpu.io_we
+	top.tb.uut.obyte[7:0]
 	top.tb.tx
 	top.tb.rx
 }

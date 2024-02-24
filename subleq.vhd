@@ -3,6 +3,22 @@
 -- Repository:  https://github.com/howerj/subleq-vhdl
 -- License:     MIT / Public Domain
 -- Description: SUBLEQ CPU
+--
+-- This is a SUBLEQ CPU, or a One Instruction Set Computer (OISC), it
+-- is Turing complete and capable of running a Forth interpreter (with
+-- the appropriate image).
+--
+-- A version that uses both ports of a Dual Port Block RAM would have
+-- fewer states and would operate faster (the operands `a` and `b`
+-- could be loaded in one cycle, then `mem[a]` and `mem[b]` the next
+-- instance instead of the four cycles it takes in this implementation).
+--
+-- There are advantages to this design however, it means that other
+-- circuitry can share the same Block RAM and interact with the SUBLEQ
+-- program, Input and Output is currently quite the weakness, only a
+-- single byte of input and output, which is really just suitable for
+-- talking to a UART.
+--
 library ieee, work, std;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
@@ -13,6 +29,8 @@ entity subleq is
 		asynchronous_reset: boolean    := true;   -- use asynchronous reset if true, synchronous if false
 		delay:              time       := 0 ns;   -- simulation only, gate delay
 		N:                  positive   := 16;     -- size the CPU
+		jump_leq:           std_ulogic := '1';    -- '1' to jump on less-than-or-equal, '0' on positive
+		non_blocking_input: boolean    := false;  -- if true, input will be -1 if there is no input
 		debug:              natural    := 0);     -- debug level, 0 = off
 	port (
 		clk:           in std_ulogic;
@@ -41,8 +59,6 @@ architecture rtl of subleq is
 		pc: std_ulogic_vector(N - 1 downto 0);
 		res: std_ulogic_vector(N - 1 downto 0);
 		state:  state_t;
-		input: std_ulogic;
-		output: std_ulogic;
 		stop: std_ulogic;
 	end record;
 
@@ -55,20 +71,17 @@ architecture rtl of subleq is
 		pc => (others => '0'),
 		res => (others => '0'),
 		state  => S_RESET,
-		input  => '0',
-		output => '0',
 		stop => '0'
 	);
 
 	signal c, f: registers_t := registers_default;
-	signal neg1, leq, stop: std_ulogic := '0';
+	signal leq, stop: std_ulogic := '0';
 	signal sub, npc: std_ulogic_vector(N - 1 downto 0) := (others => '0');
 
 	constant AZ: std_ulogic_vector(N - 1 downto 0) := (others => '0');
 	constant AO: std_ulogic_vector(N - 1 downto 0) := (others => '1');
 begin
 	npc <= std_ulogic_vector(unsigned(c.pc) + 1) after delay;
-	neg1 <= '1' when i = AO else '0' after delay;
 	stop <= '1' when c.pc(c.pc'high) = '1' else '0' after delay;
 	sub <= std_ulogic_vector(unsigned(c.lb) - unsigned(c.la)) after delay;
 	leq <= '1' when c.res(c.res'high) = '1' or c.res = AZ else '0' after delay;
@@ -89,7 +102,7 @@ begin
 		end if;
 	end process;
 
-	process (c, i, npc, neg1, leq, sub, ibyte, obsy, ihav, pause, stop) begin
+	process (c, i, npc, leq, sub, ibyte, obsy, ihav, pause, stop) begin
 		f <= c after delay;
 		halt <= '0' after delay;
 		io_we <= '0' after delay;
@@ -151,7 +164,7 @@ begin
 			f.state <= S_NJMP after delay;
 			a <= c.b after delay;
 			we <= '1' after delay;
-			if leq = '1' then
+			if leq = jump_leq then
 				f.state <= S_JMP after delay;
 			end if;
 		when S_JMP =>
@@ -169,6 +182,9 @@ begin
 			if ihav = '1' then
 				f.state <= S_IN_STORE after delay;
 				io_re <= '1' after delay;
+			elsif non_blocking_input then
+				f.state <= S_IN_STORE after delay;
+				f.res <= (others => '1');
 			end if;
 		when S_IN_STORE =>
 			f.state <= S_NJMP after delay;
