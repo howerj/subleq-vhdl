@@ -50,7 +50,6 @@ architecture rtl of top is
 	signal clock_reg_rx_we: std_ulogic;
 	signal control_reg_we:  std_ulogic;
 
-
 	signal rst:        std_ulogic := '0';
 	signal i, o, a:    std_ulogic_vector(N - 1 downto 0) := (others => 'X');
 	signal bsy, hav, re, we, io_re, io_we: std_ulogic := 'X';
@@ -95,6 +94,8 @@ begin
 			din  => o,
 			dout => i);
 
+	hav <= '1' when rx_fifo_empty = '0' else '0';
+
 	uart: entity work.uart_top
 		generic map (
 			clock_frequency    => g.clock_frequency,
@@ -107,16 +108,16 @@ begin
 			clk => clk, rst => rst,
 
 			tx               =>  tx,
-			tx_fifo_full     =>  tx_fifo_full,
+			tx_fifo_full     =>  bsy,
 			tx_fifo_empty    =>  tx_fifo_empty,
-			tx_fifo_we       =>  tx_fifo_we,
-			tx_fifo_data     =>  tx_fifo_data,
+			tx_fifo_we       =>  io_we,
+			tx_fifo_data     =>  obyte,
 
 			rx               =>  rx,
 			rx_fifo_full     =>  rx_fifo_full,
 			rx_fifo_empty    =>  rx_fifo_empty,
-			rx_fifo_re       =>  rx_fifo_re,
-			rx_fifo_data     =>  rx_fifo_data,
+			rx_fifo_re       =>  io_re,
+			rx_fifo_data     =>  ibyte,
 
 			reg              =>  reg,
 			clock_reg_tx_we  =>  clock_reg_tx_we,

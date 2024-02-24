@@ -86,6 +86,7 @@ expr
 filter
 forth
 fth/doc/doxygen/*
+gforth.dec
 gui
 h2
 h2_tb

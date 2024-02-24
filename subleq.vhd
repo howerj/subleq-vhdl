@@ -57,7 +57,7 @@ architecture rtl of subleq is
 	);
 
 	signal c, f: registers_t := registers_default;
-	signal zero, neg1, leq, stop: std_ulogic := '0';
+	signal neg1, leq, stop: std_ulogic := '0';
 	signal res, npc: std_ulogic_vector(N - 1 downto 0) := (others => '0');
 
 	constant AZ: std_ulogic_vector(N - 1 downto 0) := (others => '0');
@@ -65,8 +65,9 @@ architecture rtl of subleq is
 begin
 	npc <= std_ulogic_vector(unsigned(c.pc) + 1) after delay;
 	neg1 <= '1' when i = AO else '0' after delay;
-	zero <= '1' when i = AZ else '0' after delay;
 	stop <= '1' when c.pc(c.pc'high) = '1' else '0' after delay;
+	res <= std_ulogic_vector(unsigned(c.la) - unsigned(c.lb)) after delay;
+	leq <= '1' when res(res'high) = '1' or res = AZ else '0' after delay;
 
 	process (clk, rst) begin
 		if rst = '1' and asynchronous_reset then
@@ -82,7 +83,7 @@ begin
 		end if;
 	end process;
 
-	process (c, i, npc, zero, neg1, leq, ibyte, obsy, ihav, pause, stop) begin
+	process (c, i, npc, neg1, leq, ibyte, obsy, ihav, pause, stop) begin
 		f <= c after delay;
 		halt <= '0' after delay;
 		io_we <= '0' after delay;

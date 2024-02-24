@@ -47,6 +47,12 @@ tb: tb.o subleq.o top.o
 subleq.hex: subleq.dec hex
 	./hex subleq.dec > $@
 
+gforth.dec: subleq.fth
+	gforth subleq.fth > $@
+
+gforth: subleq gforth.dec
+	./subleq gforth.dec
+
 tb.ghw: tb tb.cfg subleq.hex
 	ghdl -r $< --wave=$<.ghw --max-stack-alloc=16384 --ieee-asserts=disable
 

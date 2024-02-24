@@ -24,7 +24,7 @@ to run the [eForth image](subleq.dec).
 * [ ] Do core implementation
 * [ ] Make small SUBLEQ test programs
 * [ ] Get implementation working in simulator with test programs
-* [ ] Make cutdown and special SUBLEQ eForth image for the smaller (16KiB) BRAM
+* [x] Make cutdown and special SUBLEQ eForth image for the smaller (16KiB) BRAM
 * [ ] Get implementation working in hardware
 
 ## Other SUBLEQ projects
