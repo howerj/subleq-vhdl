@@ -39,6 +39,7 @@ to run the [eForth image](subleq.dec).
 * [ ] Get implementation working in hardware (need a board for this)
 * [ ] Find way of interacting with other hardware
 * [ ] Optimize SUBLEQ design for slice area (and speed if possible)
+* [ ] Using Graphviz online, make a state-machine diagram
 
 ## Other SUBLEQ projects
 
