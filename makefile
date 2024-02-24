@@ -1,16 +1,18 @@
 CC=gcc
 CFLAGS=-Wall -Wextra -std=c99 -O2
+GHDL=ghdl
 USB?=/dev/ttyUSB0
 BAUD?=115200
 DIFF?=vimdiff
+IMAGE=subleq
 #BAUD?=9600
 
 .PHONY: all run diff simulation viewer clean documentation
 
 all: subleq simulation
 
-run: subleq subleq.dec
-	./subleq subleq.dec
+run: subleq ${IMAGE}.dec
+	./subleq ${IMAGE}.dec
 
 talk:
 	picocom --omap delbs -e b -b ${BAUD} ${USB}
@@ -29,7 +31,7 @@ subleq: subleq.c
 	${CC} ${CFLAGS} $< -o $@
 
 %.o: %.vhd
-	ghdl -a -g $<
+	${GHDL} -a -g $<
 
 %.hex: %.dec hex
 	./hex $< > $@
@@ -42,10 +44,10 @@ top.o: top.vhd subleq.o util.o uart.o
 tb.o: tb.vhd subleq.o top.o
 
 tb: tb.o subleq.o top.o
-	ghdl -e $@
+	${GHDL} -e $@
 
-subleq.hex: subleq.dec hex
-	./hex subleq.dec > $@
+${IMAGE}.hex: ${IMAGE}.dec hex
+	./hex ${IMAGE}.dec > $@
 
 gforth.dec: subleq.fth
 	gforth subleq.fth > $@
@@ -54,7 +56,7 @@ gforth: subleq gforth.dec
 	./subleq gforth.dec
 
 tb.ghw: tb tb.cfg subleq.hex
-	ghdl -r $< --wave=$<.ghw --max-stack-alloc=16384 --ieee-asserts=disable
+	${GHDL} -r $< --wave=$<.ghw --max-stack-alloc=16384 --ieee-asserts=disable
 
 SOURCES = \
 	top.vhd \

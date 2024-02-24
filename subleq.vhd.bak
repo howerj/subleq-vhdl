@@ -30,34 +30,28 @@ entity subleq is
 end;
 
 architecture rtl of subleq is
-	type state_t is (S_RESET, S_A, S_B, S_C, S_LA, S_LB, S_RESULT, S_STORE, S_JMP, S_NJMP, S_IN, S_IN_STORE, S_OUT, S_HALT);
+	type state_t is (S_RESET, S_A, S_LA, S_B, S_LB, S_C, S_NJMP, S_STORE, S_IN, S_OUT, S_HALT);
 
 	type registers_t is record
-		a:  std_ulogic_vector(N - 1 downto 0);
-		b:  std_ulogic_vector(N - 1 downto 0);
-		c:  std_ulogic_vector(N - 1 downto 0);
 		la: std_ulogic_vector(N - 1 downto 0);
+		b:  std_ulogic_vector(N - 1 downto 0);
 		lb: std_ulogic_vector(N - 1 downto 0);
 		pc: std_ulogic_vector(N - 1 downto 0);
 		res: std_ulogic_vector(N - 1 downto 0);
 		state:  state_t;
 		input: std_ulogic;
 		output: std_ulogic;
-		stop: std_ulogic;
 	end record;
 
 	constant registers_default: registers_t := (
-		a  => (others => '0'),
-		b  => (others => '0'),
-		c  => (others => '0'),
 		la => (others => '0'),
+		b  => (others => '0'),
 		lb => (others => '0'),
 		pc => (others => '0'),
 		res => (others => '0'),
 		state  => S_RESET,
 		input  => '0',
-		output => '0',
-		stop => '0'
+		output => '0'
 	);
 
 	signal c, f: registers_t := registers_default;
@@ -70,10 +64,8 @@ begin
 	npc <= std_ulogic_vector(unsigned(c.pc) + 1) after delay;
 	neg1 <= '1' when i = AO else '0' after delay;
 	stop <= '1' when c.pc(c.pc'high) = '1' else '0' after delay;
-	res <= std_ulogic_vector(unsigned(c.lb) - unsigned(c.la)) after delay;
-	leq <= '1' when c.res(c.res'high) = '1' or c.res = AZ else '0' after delay;
-	o <= c.res after delay;
-	obyte <= c.la(obyte'range) after delay;
+	res <= std_ulogic_vector(unsigned(i) - unsigned(c.la)) after delay;
+	leq <= '1' when res(res'high) = '1' or c.res = AZ else '0' after delay;
 
 	process (clk, rst) begin
 		if rst = '1' and asynchronous_reset then
@@ -89,7 +81,7 @@ begin
 		end if;
 	end process;
 
-	process (c, i, npc, neg1, leq, res, ibyte, obsy, ihav, pause, stop) begin
+	process (c, i, npc, neg1, leq, ibyte, obsy, ihav, pause, stop) begin
 		f <= c after delay;
 		halt <= '0' after delay;
 		io_we <= '0' after delay;
@@ -97,7 +89,8 @@ begin
 		we <= '0' after delay;
 		re <= '0' after delay;
 		a <= c.pc after delay;
-		if stop = '1' then f.stop <= '1' after delay; end if;
+		o <= (others => '0') after delay;
+		obyte <= (others => '0') after delay;
 
 		case c.state is
 		when S_RESET => 
@@ -106,76 +99,76 @@ begin
 			a <= (others => '0') after delay;
 			re <= '1' after delay;
 		when S_A =>
-			f.state <= S_B after delay;
-			f.a <= i after delay;
-			re <= '1' after delay;
-			a <= npc after delay;
-			f.pc <= npc after delay;
-			if c.stop = '1' then
-				f.state <= S_HALT after delay;
-			end if;
-		when S_B =>
-			f.state <= S_C after delay;
-			f.b <= i after delay;
-			re <= '1' after delay;
-			a <= npc after delay;
-			f.pc <= npc after delay;
-		when S_C =>
 			f.state <= S_LA after delay;
-			f.c <= i after delay;
+			f.input <= '0' after delay;
+			f.output <= '0' after delay;
 			re <= '1' after delay;
-			a <= c.a after delay;
-			f.pc <= npc after delay;
+			a <= i after delay;
+			if stop = '1' then
+				f.state <= S_HALT after delay;
+			elsif neg1 = '1' then
+				f.state <= S_B after delay;
+				f.input <= '1' after delay;
+				a <= npc after delay;
+			end if;
 		when S_LA =>
-			f.state <= S_LB after delay;
+			f.state <= S_B after delay;
 			f.la <= i after delay;
-			a <= c.b after delay;
+			f.pc <= npc after delay;
+			a <= npc after delay;
 			re <= '1' after delay;
-		when S_LB =>
-			f.state <= S_RESULT after delay;
-			f.lb <= i after delay;
+		when S_B =>
+			f.state <= S_LB after delay;
+			f.b <= i after delay;
+			f.output <= '0' after delay;
 			re <= '1' after delay;
-		when S_RESULT =>
-			f.state <= S_STORE after delay;
-			f.res <= res after delay;
-			a <= c.b after delay;
-			if c.a = AO then
-				f.state <= S_IN after delay;
-				f.res <= (others => '0');
-				f.res(ibyte'range) <= ibyte;
-			elsif c.b = AO then
+			a <= i after delay;
+			if neg1 = '1' then
 				f.state <= S_OUT after delay;
+				f.output <= '1' after delay;
+			end if;
+		when S_LB =>
+			f.state <= S_STORE after delay;
+			f.pc <= npc after delay;
+			f.lb <= i after delay;
+			a <= f.b after delay;
+			re <= '1' after delay;
+			f.res <= res after delay;
+			if c.input = '1' then
+				f.state <= S_IN after delay;
 			end if;
 		when S_STORE =>
 			f.state <= S_NJMP after delay;
-			we <= '1' after delay;
 			if leq = '1' then
-				f.state <= S_JMP after delay;
+				f.state <= S_C after delay;
+				f.pc <= npc after delay;
 			end if;
-		when S_JMP =>
+			o <= f.res after delay;
+			we <= '1' after delay;
+		when S_C =>
 			f.state <= S_A after delay;
-			a <= c.c after delay;
-			f.pc <= c.c after delay;
+			f.pc <= i after delay;
+			a <= i after delay;
 			re <= '1' after delay;
 		when S_NJMP =>
 			f.state <= S_A after delay;
-			a <= c.pc after delay;
+			f.pc <= npc after delay;
+			a <= npc after delay;
 			re <= '1' after delay;
 		when S_IN =>
-			a <= c.b after delay; -- hold address
-			f.res <= (others => '0');
-			f.res(ibyte'range) <= ibyte;
 			if ihav = '1' then
-				f.state <= S_IN_STORE after delay;
+				f.pc <= npc after delay;
+				f.state <= S_STORE after delay;
 				io_re <= '1' after delay;
+				f.res <= (others => '0');
+				f.res(ibyte'range) <= ibyte;
+				a <= f.lb after delay;
 			end if;
-		when S_IN_STORE =>
-			f.state <= S_A after delay;
-			we <= '1' after delay;
 		when S_OUT =>
 			if obsy = '0' then
-				f.state <= S_A after delay;
+				f.state <= S_NJMP after delay;
 				io_we <= '1' after delay;
+				obyte <= c.la(obyte'range);
 			end if;
 		when S_HALT =>
 			halt <= '1' after delay;

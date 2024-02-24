@@ -35,20 +35,20 @@ architecture rtl of top is
 	constant W:           positive := N - 3;
 	constant addr_length: positive := W;
 
-	signal tx_fifo_full:  std_ulogic;
-	signal tx_fifo_empty: std_ulogic;
-	signal tx_fifo_we:    std_ulogic;
-	signal tx_fifo_data:  std_ulogic_vector(7 downto 0);
+	signal tx_fifo_full:  std_ulogic := '0';
+	signal tx_fifo_empty: std_ulogic := '0';
+	signal tx_fifo_we:    std_ulogic := '0';
+	signal tx_fifo_data:  std_ulogic_vector(7 downto 0) := (others => '0');
 
-	signal rx_fifo_full:  std_ulogic;
-	signal rx_fifo_empty: std_ulogic;
-	signal rx_fifo_re:    std_ulogic;
-	signal rx_fifo_data:  std_ulogic_vector(7 downto 0);
+	signal rx_fifo_full:  std_ulogic := '0';
+	signal rx_fifo_empty: std_ulogic := '0';
+	signal rx_fifo_re:    std_ulogic := '0';
+	signal rx_fifo_data:  std_ulogic_vector(7 downto 0) := (others => '0');
 
-	signal reg:             std_ulogic_vector(15 downto 0);
-	signal clock_reg_tx_we: std_ulogic;
-	signal clock_reg_rx_we: std_ulogic;
-	signal control_reg_we:  std_ulogic;
+	signal reg:             std_ulogic_vector(15 downto 0) := (others => '0');
+	signal clock_reg_tx_we: std_ulogic := '0';
+	signal clock_reg_rx_we: std_ulogic := '0';
+	signal control_reg_we:  std_ulogic := '0';
 
 	signal rst:        std_ulogic := '0';
 	signal i, o, a:    std_ulogic_vector(N - 1 downto 0) := (others => 'X');
@@ -56,6 +56,7 @@ architecture rtl of top is
 	signal obyte, ibyte: std_ulogic_vector(7 downto 0) := (others => 'X');
 begin
 	hav <= not rx_fifo_empty;
+	bsy <= not tx_fifo_empty;
 
 	cpu: entity work.subleq
 		generic map (
@@ -110,7 +111,7 @@ begin
 			clk => clk, rst => rst,
 
 			tx               =>  tx,
-			tx_fifo_full     =>  bsy,
+			tx_fifo_full     =>  tx_fifo_full,
 			tx_fifo_empty    =>  tx_fifo_empty,
 			tx_fifo_we       =>  io_we,
 			tx_fifo_data     =>  obyte,

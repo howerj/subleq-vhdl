@@ -16,18 +16,21 @@ entity tb is
 end tb;
 
 architecture testing of tb is
-	constant g: common_generics           := default_settings;
-	constant clock_period:       time     := 1000 ms / g.clock_frequency;
-	constant baud:               positive := 115200;
-	constant configuration_file_name: string := "tb.cfg";
-	constant N:                  positive := 16;
+	constant g:                        common_generics  := default_settings;
+	constant clock_period:             time             := 1000 ms / g.clock_frequency;
+	constant baud:                     positive         := 115200;
+	constant configuration_file_name:  string           := "tb.cfg";
+	--constant subleq_image_hex_file:    string           := "subleq.hex";
+	constant subleq_image_hex_file:    string           := "hi.hex";
+	constant N:                        positive         := 16;
 
 	signal stop:   boolean    := false;
 	signal clk:    std_ulogic := '0';
 	signal halt:   std_ulogic := '0';
 	signal rst:    std_ulogic := '1';
 
-	signal rx, tx: std_ulogic := '0';
+	signal tx: std_ulogic := 'X';
+	signal rx: std_ulogic := '1';
 
 	type configurable_items is record
 		clocks:         natural;
@@ -47,7 +50,7 @@ architecture testing of tb is
 	constant configuration_default: configuration_items(0 to 2) := (
 		(name => "Clocks..", value => 1000),
 		(name => "Forever.", value => 0),
-		(name => "Debug...", value => 0) -- TODO: Doesn't work for setting generics
+		(name => "Debug...", value => 0) -- N.B. Doesn't work for setting generics
 	);
 
 	-- Test bench configurable options --
@@ -64,7 +67,7 @@ begin
 	uut: entity work.top
 		generic map(
 			g          => g,
-			file_name  => "subleq.hex",
+			file_name  => subleq_image_hex_file,
 			N          => N,
 			baud       => baud,
 			debug      => cfg.debug)

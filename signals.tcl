@@ -15,13 +15,18 @@ set names {
 	top.tb.uut.cpu.i[15:0]
 	top.tb.uut.cpu.c.state
 	top.tb.uut.cpu.c.a[15:0]
-	top.tb.uut.cpu.c.la[15:0]
 	top.tb.uut.cpu.c.b[15:0]
-	top.tb.uut.cpu.c.lb[15:0]
 	top.tb.uut.cpu.c.c[15:0]
+	top.tb.uut.cpu.c.la[15:0]
+	top.tb.uut.cpu.c.lb[15:0]
 	top.tb.uut.cpu.c.pc[15:0]
+	top.tb.uut.cpu.c.res[15:0]
 	top.tb.uut.cpu.c.input
 	top.tb.uut.cpu.c.output
+	top.tb.uut.cpu.res[15:0]
+	top.tb.uut.cpu.npc[15:0]
+	top.tb.uut.cpu.leq
+	top.tb.uut.cpu.neg1
 	top.tb.uut.cpu.io_re
 	top.tb.uut.cpu.io_we
 	top.tb.uut.cpu.re
