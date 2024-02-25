@@ -5,11 +5,7 @@
 typedef uint16_t u16;
 static const u16 n = -1;
 static u16 m[1<<13], pc = 0, prog = 0;
-
-static u16 A(u16 x) {
-	assert(x < (1<<13));
-	return x;
-}
+static u16 A(u16 x) { assert(x < (1<<13)); return x; }
 
 int main(int argc, char **argv) {
 	for (long i = 1, d = 0; i < argc; i++) {

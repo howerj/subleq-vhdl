@@ -6,7 +6,8 @@
 --
 -- This is a SUBLEQ CPU, or a One Instruction Set Computer (OISC), it
 -- is Turing complete and capable of running a Forth interpreter (with
--- the appropriate image).
+-- the appropriate image). See <https://github.com/howerj/subleq> for
+-- the source of the eForth image, another one of my projects.
 --
 -- A version that uses both ports of a Dual Port Block RAM would have
 -- fewer states and would operate faster (the operands `a` and `b`
@@ -18,6 +19,11 @@
 -- program, Input and Output is currently quite the weakness, only a
 -- single byte of input and output, which is really just suitable for
 -- talking to a UART.
+--
+-- It would be nice to make as much configurable as possible (via
+-- generics) to make the design more flexible. This has been done to
+-- an extent where it is easy (for example you can invert the jump
+-- condition if you want).
 --
 library ieee, work, std;
 use ieee.std_logic_1164.all;
@@ -86,6 +92,57 @@ architecture rtl of subleq is
 
 	constant AZ: std_ulogic_vector(N - 1 downto 0) := (others => '0');
 	constant AO: std_ulogic_vector(N - 1 downto 0) := (others => '1');
+
+	-- Obviously this does not synthesize, which is why synthesis is turned
+	-- off for the body of this function, it does make debugging much easier
+	-- though, we will be able to see which instructions are executed and do so
+	-- by name.
+	procedure print_debug_info is
+		variable ll: line;
+
+		function hx(slv: in std_ulogic_vector) return string is -- std_ulogic_vector to hex string
+			constant cv: string := "0123456789ABCDEF";
+			constant qu: integer := slv'length   / 4;
+			constant rm: integer := slv'length mod 4;
+			variable rs: string(1 to qu);
+			variable sl: std_ulogic_vector(3 downto 0);
+		begin
+			assert rm = 0 severity failure;
+			for l in 0 to qu - 1 loop
+				sl := slv((l * 4) + 3 downto (l * 4));
+				rs(qu - l) := cv(to_integer(unsigned(sl)) + 1);
+			end loop;
+			return rs;
+		end function;
+
+		function yn(sl: std_ulogic; ch: character) return string is -- print a flag
+			variable rs: string(1 to 2) := "- ";
+		begin
+			if sl = '1' then
+				rs(1) := ch;
+			end if;
+			return rs;
+		end function;
+	begin
+		-- synthesis translate_off
+		if debug > 0 then
+			write(ll, hx(c.pc)  & ": ");
+			write(ll, state_t'image(c.state) & HT);
+			write(ll, hx(c.a)   & " ");
+			write(ll, hx(c.b)   & " ");
+			write(ll, hx(c.c)   & " ");
+			write(ll, hx(c.la)  & " ");
+			write(ll, hx(c.lb)  & " ");
+			write(ll, hx(c.res) & " ");
+			writeline(OUTPUT, ll);
+			if debug > 1 then
+				write(ll, state_t'image(c.state) & " => ");
+				write(ll, state_t'image(f.state));
+				writeline(OUTPUT, ll);
+			end if;
+		end if;
+		-- synthesis translate_on
+	end procedure;
 begin
 	npc <= std_ulogic_vector(unsigned(c.pc) + 1) after delay;
 	stop <= '1' when c.pc(c.pc'high) = '1' else '0' after delay;
@@ -102,7 +159,7 @@ begin
 			if rst = '1' and not asynchronous_reset then
 				c.state <= S_RESET after delay;
 			else
-				null;
+				print_debug_info;
 				-- Debugging goes here
 			end if;
 		end if;
@@ -206,7 +263,6 @@ begin
 		when S_HALT =>
 			halt <= '1' after delay;
 		end case;
-
 	end process;
-
 end architecture;
+

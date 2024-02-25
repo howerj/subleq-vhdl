@@ -74,7 +74,7 @@ architecture testing of tb is
 	constant configuration_default: configuration_items(0 to 8) := (
 		(name => "Clocks..", value => 1000),
 		(name => "Forever.", value => 0),
-		(name => "Debug...", value => 0), -- TODO: Doesn't work for setting generics
+		(name => "Debug...", value => 0), -- N.B. Doesn't work for setting generics, unfortunately 
 		(name => "Interact", value => 0),
 		(name => "InWaitMs", value => 15),
 		(name => "UartRep.", value => 0),
@@ -262,7 +262,7 @@ begin
 			wait;
 		end if;
 
-		-- N.B. It would be better to read from a file
+		-- N.B. It would be better to read (optionally) from a file
 		report "Waiting for " & time'image(cfg.input_wait_for) & " (before reading from STDIN)";
 		wait for cfg.input_wait_for;
 		report "Reading from STDIN (Hit EOF/CTRL-D/CTRL-Z After entering a line)";
@@ -278,7 +278,7 @@ begin
 				else
 					eoi := true;
 
-					report "UART -> BCPU EOL/EOI: CR";
+					report "UART -> BCPU EOL/EOI: " & integer'image(character'pos(CR)) & " CR";
 					c := CR;
 					tx_fifo_data <= std_ulogic_vector(to_unsigned(character'pos(c), tx_fifo_data'length));
 					tx_fifo_we <= '1';
@@ -286,7 +286,7 @@ begin
 					tx_fifo_we <= '0';
 					wait for cfg.uart_char_delay;
 					if stop then exit; end if;
-					report "UART -> BCPU EOL/EOI: LF";
+					report "UART -> BCPU EOL/EOI: " & integer'image(character'pos(LF)) & " LF";
 					c := LF;
 				end if;
 				tx_fifo_data <= std_ulogic_vector(to_unsigned(character'pos(c), tx_fifo_data'length));
