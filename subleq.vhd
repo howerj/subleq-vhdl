@@ -48,7 +48,13 @@ entity subleq is
 end;
 
 architecture rtl of subleq is
-	type state_t is (S_RESET, S_A, S_B, S_C, S_LA, S_LB, S_RESULT, S_STORE, S_JMP, S_NJMP, S_IN, S_IN_STORE, S_OUT, S_HALT);
+	type state_t is (
+		S_RESET, 
+		S_A, S_B, S_C, S_LA, S_LB, 
+		S_RESULT, S_STORE, 
+		S_JMP, S_NJMP, 
+		S_IN, S_IN_STORE, S_OUT, 
+		S_HALT);
 
 	type registers_t is record
 		a:  std_ulogic_vector(N - 1 downto 0);
@@ -188,6 +194,7 @@ begin
 			end if;
 		when S_IN_STORE =>
 			f.state <= S_NJMP after delay;
+			a <= c.b after delay; -- hold address
 			we <= '1' after delay;
 		when S_OUT =>
 			a <= c.pc after delay;
