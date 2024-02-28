@@ -87,7 +87,7 @@ defined eforth [if] ' ) <ok> ! [then] ( Turn off ok prompt )
 only forth definitions hex
 0 constant opt.multi      ( Add in large "pause" primitive )
 0 constant opt.editor     ( Add in Text Editor )
-0 constant opt.info       ( Add info printing function )
+1 constant opt.info       ( Add info printing function )
 0 constant opt.generate-c ( Generate C code )
 0 constant opt.better-see ( Replace 'see' with better version )
 0 constant opt.control    ( Add in more control structures )
@@ -103,7 +103,7 @@ only forth definitions hex
 : sys.info     4 or ; ( bit #3 = print info msg on startup )
 : sys.eof      8 or ; ( bit #4 = die if received EOF )
 : sys.warnv  $10 or ; ( bit #5 = warn if virtualized )
-0 ( sys.cksum ) sys.info constant opt.sys
+0 ( sys.cksum ) ( sys.info ) constant opt.sys
 defined (order) 0= [if]
 : (order) ( w wid*n n -- wid*n w n )
   dup if
