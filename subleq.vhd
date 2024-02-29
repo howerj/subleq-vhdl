@@ -72,6 +72,7 @@ architecture rtl of subleq is
 		res: std_ulogic_vector(N - 1 downto 0);
 		state:  state_t;
 		stop: std_ulogic;
+		input, output: std_ulogic;
 	end record;
 
 	constant registers_default: registers_t := (
@@ -83,11 +84,13 @@ architecture rtl of subleq is
 		pc => (others => '0'),
 		res => (others => '0'),
 		state  => S_RESET,
-		stop => '0'
+		stop => '0',
+		input => '0',
+		output => '0'
 	);
 
 	signal c, f: registers_t := registers_default;
-	signal leq, stop: std_ulogic := '0';
+	signal leq, stop, neg: std_ulogic := '0';
 	signal sub, npc: std_ulogic_vector(N - 1 downto 0) := (others => '0');
 
 	constant AZ: std_ulogic_vector(N - 1 downto 0) := (others => '0');
@@ -112,15 +115,6 @@ architecture rtl of subleq is
 				sl := slv((l * 4) + 3 downto (l * 4));
 				rs(qu - l) := cv(to_integer(unsigned(sl)) + 1);
 			end loop;
-			return rs;
-		end function;
-
-		function yn(sl: std_ulogic; ch: character) return string is -- print a flag
-			variable rs: string(1 to 2) := "- ";
-		begin
-			if sl = '1' then
-				rs(1) := ch;
-			end if;
 			return rs;
 		end function;
 	begin
@@ -148,6 +142,7 @@ begin
 	stop <= '1' when c.pc(c.pc'high) = '1' else '0' after delay;
 	sub <= std_ulogic_vector(unsigned(c.lb) - unsigned(c.la)) after delay;
 	leq <= '1' when c.res(c.res'high) = '1' or c.res = AZ else '0' after delay;
+	neg <= '1' when i = AO else '0' after delay;
 	o <= c.res after delay;
 	obyte <= c.la(obyte'range) after delay;
 
@@ -160,12 +155,11 @@ begin
 				c.state <= S_RESET after delay;
 			else
 				print_debug_info;
-				-- Debugging goes here
 			end if;
 		end if;
 	end process;
 
-	process (c, i, npc, leq, sub, ibyte, obsy, ihav, pause, stop) begin
+	process (c, i, npc, neg, leq, sub, ibyte, obsy, ihav, pause, stop) begin
 		f <= c after delay;
 		halt <= '0' after delay;
 		io_we <= '0' after delay;
@@ -187,6 +181,10 @@ begin
 			re <= '1' after delay;
 			a <= npc after delay;
 			f.pc <= npc after delay;
+			f.input <= '0';
+			if neg = '1' then
+				f.input <= '1';
+			end if;
 			if c.stop = '1' then
 				f.state <= S_HALT after delay;
 			end if;
@@ -196,6 +194,10 @@ begin
 			re <= '1' after delay;
 			a <= npc after delay;
 			f.pc <= npc after delay;
+			f.output <= '0';
+			if neg = '1' then
+				f.output <= '1';
+			end if;
 		when S_C =>
 			f.state <= S_LA after delay;
 			f.c <= i after delay;
@@ -216,11 +218,11 @@ begin
 			f.state <= S_STORE after delay;
 			f.res <= sub after delay;
 			a <= c.b after delay;
-			if c.a = AO then
+			if c.input = '1' then
 				f.state <= S_IN after delay;
 				f.res <= (others => '0');
 				f.res(ibyte'range) <= ibyte;
-			elsif c.b = AO then
+			elsif c.output = '1' then
 				f.state <= S_OUT after delay;
 			end if;
 		when S_STORE =>
