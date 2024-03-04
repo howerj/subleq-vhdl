@@ -57,7 +57,7 @@ architecture rtl of subleq is
 	type state_t is (
 		S_RESET, 
 		S_A, S_B, S_C, S_LA, S_LB, 
-		S_RESULT, S_STORE, 
+		S_STORE, 
 		S_JMP, S_NJMP, 
 		S_IN, S_IN_STORE, S_OUT, 
 		S_HALT);
@@ -83,7 +83,7 @@ architecture rtl of subleq is
 		lb => (others => '0'),
 		pc => (others => '0'),
 		res => (others => '0'),
-		state  => S_RESET,
+		state => S_RESET,
 		stop => '0',
 		input => '0',
 		output => '0'
@@ -140,9 +140,9 @@ architecture rtl of subleq is
 begin
 	npc <= std_ulogic_vector(unsigned(c.pc) + 1) after delay;
 	stop <= '1' when c.pc(c.pc'high) = '1' else '0' after delay;
-	sub <= std_ulogic_vector(unsigned(c.lb) - unsigned(c.la)) after delay;
+	sub <= std_ulogic_vector(unsigned(i) - unsigned(c.la)) after delay;
 	leq <= '1' when c.res(c.res'high) = '1' or c.res = AZ else '0' after delay;
-	neg <= '1' when i = AO else '0' after delay;
+	neg <= '1' when i = AO else '0' after delay; -- could just check high bit, would be cheaper, but inaccurate
 	o <= c.res after delay;
 	obyte <= c.la(obyte'range) after delay;
 
@@ -210,14 +210,11 @@ begin
 			a <= c.b after delay;
 			re <= '1' after delay;
 		when S_LB =>
-			f.state <= S_RESULT after delay;
-			f.lb <= i after delay;
-			a <= c.b after delay;
-			re <= '1' after delay;
-		when S_RESULT =>
 			f.state <= S_STORE after delay;
+			f.lb <= i after delay;
 			f.res <= sub after delay;
 			a <= c.b after delay;
+			re <= '1' after delay;
 			if c.input = '1' then
 				f.state <= S_IN after delay;
 				f.res <= (others => '0');

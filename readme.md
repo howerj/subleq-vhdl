@@ -152,9 +152,10 @@ can be pasted into [GraphvizOnline][].
   * [x] Add more run time configuration options
   * [x] Add a UART that can print to STDOUT and read from STDIN (or a FILE)
 * [x] Make cut-down and special SUBLEQ eForth image for the smaller (16KiB) BRAM
+* [ ] Make one big VHDL file containing an initial Forth image and place it in `subleq.vhd`?
+* [ ] Optimize SUBLEQ design for slice area (and speed if possible)
 * [ ] Get implementation working in hardware (need an FPGA board for this)
 * [ ] Find way of interacting with other hardware
-* [ ] Optimize SUBLEQ design for slice area (and speed if possible)
 * [x] Using Graphviz online, make a state-machine diagram
 
 ## Other SUBLEQ projects
