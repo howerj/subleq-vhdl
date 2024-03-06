@@ -221,11 +221,18 @@ begin
 			re <= '1' after delay;
 			a <= c.a after delay;
 			f.pc <= npc after delay;
+			if c.input = '1' then -- skip S_LA
+				a <= c.b after delay;
+				f.state <= S_LB after delay;
+			end if;
 		when S_LA =>
 			f.state <= S_LB after delay;
 			f.la <= i after delay;
 			a <= c.b after delay;
 			re <= '1' after delay;
+			if c.output = '1' then -- skip S_LB
+				f.state <= S_OUT after delay;
+			end if;
 		when S_LB =>
 			f.state <= S_STORE after delay;
 			f.lb <= i after delay;
@@ -236,8 +243,6 @@ begin
 				f.state <= S_IN after delay;
 				f.res <= (others => '0');
 				f.res(ibyte'range) <= ibyte;
-			elsif c.output = '1' then
-				f.state <= S_OUT after delay;
 			end if;
 		when S_STORE =>
 			f.state <= S_NJMP after delay;
