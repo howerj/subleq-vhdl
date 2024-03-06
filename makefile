@@ -7,7 +7,7 @@ DIFF?=vimdiff
 IMAGE=subleq
 #BAUD?=9600
 
-.PHONY: all run diff simulation viewer clean documentation
+.PHONY: all run diff simulation viewer clean documentation synthesis implementation bitfile
 
 all: subleq simulation
 
@@ -49,8 +49,8 @@ tb: tb.o subleq.o top.o
 ${IMAGE}.hex: ${IMAGE}.dec hex
 	./hex ${IMAGE}.dec > $@
 
-gforth.dec: subleq.fth
-	gforth subleq.fth > $@
+gforth.dec: eforth.txt
+	gforth $< > $@
 
 gforth: subleq gforth.dec
 	./subleq gforth.dec
