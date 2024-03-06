@@ -228,6 +228,7 @@ begin
 					c := CR;
 					ibyte <= std_ulogic_vector(to_unsigned(character'pos(c), ibyte'length));
 					ihav <= '1';
+					wait for clock_period;
 					wait until io_re = '1' or stop;
 					ihav <= '0';
 					wait for cfg.uart_char_delay;
@@ -237,6 +238,7 @@ begin
 				end if;
 				ibyte <= std_ulogic_vector(to_unsigned(character'pos(c), ibyte'length));
 				ihav <= '1';
+				wait for clock_period;
 				wait until io_re = '1' or stop;
 				ihav <= '0';
 				wait for cfg.uart_char_delay;
