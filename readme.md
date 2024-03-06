@@ -110,14 +110,14 @@ can be pasted into [GraphvizOnline][].
 	digraph subleq {
 	  reset -> a;
 	  a -> b;
+	  a -> a [label = "pause = 1"];
 	  a -> halt;
 	  b -> c;
 	  c -> la;
 	  la -> lb;
-	  lb -> result;
-	  result -> store;
-	  result -> in [label = "a = -1"];
-	  result -> out [label = "b = -1"];
+	  lb -> store;
+	  lb -> in [label = "a = -1"];
+	  lb -> out [label = "b = -1"];
 	  halt -> halt;
 
 	  store -> jmp [label="res <= 0"];
@@ -131,8 +131,7 @@ can be pasted into [GraphvizOnline][].
 	  "in-store" -> njmp;
 
 	  out -> a;
-	  out -> out [label="obsy = '1'"]
-
+	  out -> out [label="obsy = '1'"];
 	}
 
 ## To Do List
@@ -153,6 +152,9 @@ can be pasted into [GraphvizOnline][].
   * [x] Add a UART that can print to STDOUT and read from STDIN (or a FILE)
 * [x] Make cut-down and special SUBLEQ eForth image for the smaller (16KiB) BRAM
 * [ ] Make one big VHDL file containing an initial Forth image and place it in `subleq.vhd`?
+  * [x] Add a component that combines the Block RAM and SUBLEQ into one along
+    with a test bench for it
+  * [ ] Merge new module into main system.
 * [ ] Optimize SUBLEQ design for slice area (and speed if possible)
 * [ ] Get implementation working in hardware (need an FPGA board for this)
 * [ ] Find way of interacting with other hardware
