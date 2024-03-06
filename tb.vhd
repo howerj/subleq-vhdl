@@ -87,6 +87,23 @@ architecture testing of tb is
 
 	shared variable cfg: configurable_items := set_configuration_items(configuration_default);
 	signal configured: boolean := false;
+
+	procedure uart_write_byte(
+		bit_period: in time; -- 8680 ns for 115200
+		din: in std_logic_vector(7 downto 0);
+		signal utx: out std_logic) is -- Make sure to set to '1' during signal declaration.
+	begin -- Test Bench Low Level UART Write byte (pretty neat) 8N1 format only
+		utx <= '0'; -- Send Start Bit
+		wait for bit_period;
+		
+		for i in 0 to din'high loop -- Send Data Byte
+			utx <= din(i);
+			wait for bit_period;
+		end loop;
+		
+		utx <= '1'; -- Send Stop Bit
+		wait for bit_period;
+	end;
 begin
 	uut: entity work.top
 		generic map(
@@ -101,7 +118,6 @@ begin
 			halt => halt,
 			tx   => tx,
 			rx   => rx);
-
 
 	uart_0_blk: block
 		signal uart_clock_rx_we, uart_clock_tx_we, uart_control_we: std_ulogic := '0';
@@ -292,3 +308,5 @@ begin
 		wait;
 	end process;
 end architecture;
+
+  
