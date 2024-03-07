@@ -20,6 +20,78 @@ Amazon, available [here](https://www.amazon.com/SUBLEQ-EFORTH-Forth-Metacompilat
 that describes how the eForth interpreter works and how to port a Forth to
 a new platform.
 
+Note that this project, unlike many other SUBLEQ CPUs written for
+FPGAs in *whatever hardware description language* implements the full machine
+without any *weird differences*, includes Input/Output, and halting.
+Weird/"non-standard" things include:
+
+- Not having a way to halt the CPU.
+- Having different bit widths for various operands.
+- Storing the negation of the input instead of just storing it.
+- Only being 8 bit (with 256 bytes for program storage).
+
+The only major difference between this system and most other SUBLEQ
+programs is that it is expected that the file containing the SUBLEQ
+program is provided as 16-bit hexadecimal values with no sign, normally
+SUBLEQ programs are specified as signed decimal values. This could
+be remedied in the future.
+
+The pseudo code for a SUBLEQ machine is:
+
+	while pc >= 0:
+		a = mem[pc]
+		b = mem[pc + 1]
+		c = mem[pc + 2]
+		pc = pc + 3
+		if a = -1:
+			mem[b] = input_byte()
+		else if b = -1:
+			output_byte(mem[a])
+		else
+			r = mem[b] - mem[a]
+			if r <= 0:
+				pc = c
+			mem[b] = r
+	
+This system tries to be as faithful as possible to this.
+
+A (smallish) C program equivalent to this for a 16-bit SUBLEQ
+machine is (given 16-bit `short` integers that wrap on overflow and 
+underflow):
+
+	#include <stdint.h>
+	#include <stdio.h>
+
+	int main(int argc, char **argv) {
+		short m[1<<13], pc = 0;
+		for (long i = 1, d = 0; i < argc; i++) {
+			FILE *f = fopen(argv[i], "r");
+			if (!f)
+				return 1;
+			while (fscanf(f, "%ld,", &d) > 0)
+				m[pc++] = d;
+			if (fclose(f) < 0)
+				return 2;
+		}
+		for (pc = 0; pc >= 0;) {
+			short a = m[pc++], b = m[pc++], c = m[pc++];
+			if (a == -1) {
+				m[b] = getchar();
+			} else if (b == -1) {
+				if (putchar(m[a]) < 0)
+					return 3;
+				if (fflush(stdout) < 0)
+					return 4;
+			} else {
+				short r = m[b] - m[a];
+				if (r <= 0)
+					pc = c;
+				m[b] = r;
+			}
+		}
+		return 0;
+	}
+
 There is a [simulator written in C](subleq.c) that can be used
 to run the [eForth image](subleq.dec).
 
@@ -145,8 +217,8 @@ can be pasted into [GraphvizOnline][].
   * [x] `subleq.dec` (eForth interpreter)
     * [x] Test output
     * [x] Test input (requires better test bench)
-  * [ ] `echo.dec` (optional)
-  * [ ] `self.dec` with `hi.dec` (optional)
+  * [x] `echo.dec` (optional)
+  * [x] `self.dec` with `hi.dec` (optional)
 * Improve test bench
   * [x] Add more run time configuration options
   * [x] Add a UART that can print to STDOUT and read from STDIN (or a FILE)

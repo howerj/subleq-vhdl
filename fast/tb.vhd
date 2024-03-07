@@ -23,6 +23,7 @@ architecture testing of tb is
 	--constant program_file_name:       string := "../progs/hi.hex";
 	--constant program_file_name:       string := "../progs/hello.hex";
 	--constant program_file_name:       string := "../progs/echo.hex";
+	--constant program_file_name:       string := "../progs/hi2.hex";
 	constant N:                       positive := 16;
 
 	signal stop:   boolean    := false;
