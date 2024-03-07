@@ -20,6 +20,9 @@ architecture testing of tb is
 	constant baud:                    positive := 115200;
 	constant configuration_file_name: string := "tb.cfg";
 	constant program_file_name:       string := "subleq.hex";
+	--constant program_file_name:       string := "../progs/hi.hex";
+	--constant program_file_name:       string := "../progs/hello.hex";
+	--constant program_file_name:       string := "../progs/echo.hex";
 	constant N:                       positive := 16;
 
 	signal stop:   boolean    := false;
@@ -106,7 +109,7 @@ begin
 		-- N.B. We could add clock jitter if we wanted, however we would
 		-- probably also want to add it to each of the modules clocks, along
 		-- with an adjustable delay.
-		while (count < cfg.clocks or cfg.forever)  and halt = '0' loop
+		while (count < cfg.clocks or cfg.forever) and halt = '0' loop
 			clk <= '1';
 			wait for clock_period / 2;
 			clk <= '0';

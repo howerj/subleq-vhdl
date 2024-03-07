@@ -114,21 +114,21 @@ can be pasted into [GraphvizOnline][].
 	  a -> halt;
 	  b -> c;
 	  c -> la;
+	  c -> lb [label = "a = -1"];
 	  la -> lb;
+	  la -> out [label = "b = -1"];
 	  lb -> store;
 	  lb -> in [label = "a = -1"];
-	  lb -> out [label = "b = -1"];
 	  halt -> halt;
 
-	  store -> jmp [label="res <= 0"];
+	  store -> jmp [label="jmp\nres <= 0"];
 	  store -> njmp;
 
 	  jmp -> a;
 	  njmp -> a;
 
 	  in -> in [label="ihav = '0'"];
-	  in -> "in-store";
-	  "in-store" -> njmp;
+	  in -> store;
 
 	  out -> a;
 	  out -> out [label="obsy = '1'"];

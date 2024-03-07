@@ -128,7 +128,6 @@ top_level_map.*
 top_level_map.ncd
 top_level_map.ngm
 top_level_xst.xrpt
-uart
 usage_statistics_webtalk.html
 vga_tb
 vgcore.*

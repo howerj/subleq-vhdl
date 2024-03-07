@@ -74,30 +74,26 @@ architecture rtl of subleq is
 		S_A, S_B, S_C, S_LA, S_LB, 
 		S_STORE, 
 		S_JMP, S_NJMP, 
-		S_IN, S_IN_STORE, S_OUT, 
+		S_IN, S_OUT, 
 		S_HALT);
 
 	type registers_t is record
-		a:  std_ulogic_vector(N - 1 downto 0);
 		b:  std_ulogic_vector(N - 1 downto 0);
 		c:  std_ulogic_vector(N - 1 downto 0);
 		la: std_ulogic_vector(N - 1 downto 0);
 		lb: std_ulogic_vector(N - 1 downto 0);
 		pc: std_ulogic_vector(N - 1 downto 0);
-		res: std_ulogic_vector(N - 1 downto 0);
 		state:  state_t;
 		stop: std_ulogic;
 		input, output: std_ulogic;
 	end record;
 
 	constant registers_default: registers_t := (
-		a  => (others => '0'),
 		b  => (others => '0'),
 		c  => (others => '0'),
 		la => (others => '0'),
 		lb => (others => '0'),
 		pc => (others => '0'),
-		res => (others => '0'),
 		state => S_RESET,
 		stop => '0',
 		input => '0',
@@ -136,12 +132,10 @@ architecture rtl of subleq is
 		if debug > 0 then
 			write(ll, hx(c.pc)  & ": ");
 			write(ll, state_t'image(c.state) & HT);
-			write(ll, hx(c.a)   & " ");
 			write(ll, hx(c.b)   & " ");
 			write(ll, hx(c.c)   & " ");
 			write(ll, hx(c.la)  & " ");
 			write(ll, hx(c.lb)  & " ");
-			write(ll, hx(c.res) & " ");
 			writeline(OUTPUT, ll);
 			if debug > 1 then
 				write(ll, state_t'image(c.state) & " => ");
@@ -154,8 +148,8 @@ architecture rtl of subleq is
 begin
 	npc   <= std_ulogic_vector(unsigned(c.pc) + 1) after delay;
 	sub   <= std_ulogic_vector(unsigned(i) - unsigned(c.la)) after delay;
-	leq   <= '1' when c.res(c.res'high) = '1' or c.res = AZ else '0' after delay;
-	o     <= c.res after delay;
+	leq   <= '1' when c.la(c.la'high) = '1' or c.la = AZ else '0' after delay;
+	o     <= c.la after delay;
 	obyte <= c.la(obyte'range) after delay;
 	neg   <= '1' when strict_io and i = AO else '0' after delay;
 	high  <= '1' when (not strict_io) and i(i'high) = '1' else '0' after delay;
@@ -192,7 +186,7 @@ begin
 			re <= '1' after delay;
 		when S_A =>
 			f.state <= S_B after delay;
-			f.a <= i after delay;
+			f.la <= i after delay;
 			re <= '1' after delay;
 			a <= npc after delay;
 			f.pc <= npc after delay;
@@ -219,7 +213,7 @@ begin
 			f.state <= S_LA after delay;
 			f.c <= i after delay;
 			re <= '1' after delay;
-			a <= c.a after delay;
+			a <= c.la after delay;
 			f.pc <= npc after delay;
 			if c.input = '1' then -- skip S_LA
 				a <= c.b after delay;
@@ -236,19 +230,19 @@ begin
 		when S_LB =>
 			f.state <= S_STORE after delay;
 			f.lb <= i after delay;
-			f.res <= sub after delay;
+			f.la <= sub after delay;
 			a <= c.b after delay;
 			re <= '1' after delay;
 			if c.input = '1' then
 				f.state <= S_IN after delay;
-				f.res <= (others => '0');
-				f.res(ibyte'range) <= ibyte;
+				f.la <= (others => '0');
+				f.la(ibyte'range) <= ibyte;
 			end if;
 		when S_STORE =>
 			f.state <= S_NJMP after delay;
 			a <= c.b after delay;
 			we <= '1' after delay;
-			if leq = jump_leq then
+			if leq = jump_leq and c.input = '0' then
 				f.state <= S_JMP after delay;
 			end if;
 		when S_JMP =>
@@ -261,19 +255,15 @@ begin
 			re <= '1' after delay;
 		when S_IN =>
 			a <= c.b after delay; -- hold address
-			f.res <= (others => '0');
-			f.res(ibyte'range) <= ibyte;
+			f.la <= (others => '0');
+			f.la(ibyte'range) <= ibyte;
 			if ihav = '1' then
-				f.state <= S_IN_STORE after delay;
+				f.state <= S_STORE after delay;
 				io_re <= '1' after delay;
 			elsif non_blocking_input then
-				f.state <= S_IN_STORE after delay;
-				f.res <= (others => '1');
+				f.state <= S_STORE after delay;
+				f.la <= (others => '1');
 			end if;
-		when S_IN_STORE =>
-			f.state <= S_NJMP after delay;
-			a <= c.b after delay; -- hold address
-			we <= '1' after delay;
 		when S_OUT =>
 			a <= c.pc after delay;
 			re <= '1' after delay;
