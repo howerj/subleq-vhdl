@@ -1,4 +1,4 @@
--- File:        tb.vhd
+-- File:        fast_tb.vhd
 -- Author:      Richard James Howe
 -- Repository:  https://github.com/howerj/subleq-vhdl
 -- Email:       howe.r.j.89@gmail.com
@@ -11,10 +11,10 @@ use ieee.numeric_std.all;
 use work.util.all;
 use std.textio.all;
 
-entity tb is
-end tb;
+entity fast_tb is
+end fast_tb;
 
-architecture testing of tb is
+architecture testing of fast_tb is
 	constant g:                       common_generics := default_settings;
 	constant clock_period:            time     := 1000 ms / g.clock_frequency;
 	constant baud:                    positive := 115200;
@@ -28,13 +28,14 @@ architecture testing of tb is
 
 	signal stop:   boolean    := false;
 	signal clk:    std_ulogic := '0';
-	signal halt:   std_ulogic := '0';
+	signal halted, blocked: std_ulogic := 'X';
 	signal rst:    std_ulogic := '1';
 
 	signal saw_char: boolean := false;
 
 	signal ibyte, obyte: std_ulogic_vector(7 downto 0) := (others => '0');
-	signal ihav, obsy, io_re, io_we: std_ulogic := '0'; 
+	signal io_re, io_we: std_ulogic := 'X';
+	signal ihav, obsy: std_ulogic := '0'; 
 
 	-- Test bench configurable options --
 
@@ -82,7 +83,7 @@ architecture testing of tb is
 	shared variable cfg: configurable_items := set_configuration_items(configuration_default);
 	signal configured: boolean := false;
 begin
-	uut: entity work.top
+	uut: entity work.subsys
 		generic map(
 			g          => g,
 			file_name  => program_file_name,
@@ -92,7 +93,8 @@ begin
 		port map (
 			clk  => clk,
 			rst  => rst,
-			halt => halt,
+			halted => halted,
+			blocked => blocked,
 			obyte => obyte,
 			ibyte => ibyte,
 			obsy => obsy,
@@ -110,14 +112,14 @@ begin
 		-- N.B. We could add clock jitter if we wanted, however we would
 		-- probably also want to add it to each of the modules clocks, along
 		-- with an adjustable delay.
-		while (count < cfg.clocks or cfg.forever) and halt = '0' loop
+		while (count < cfg.clocks or cfg.forever) and halted = '0' loop
 			clk <= '1';
 			wait for clock_period / 2;
 			clk <= '0';
 			wait for clock_period / 2;
 			count := count + 1;
 		end loop;
-		if halt = '1' then
+		if halted = '1' then
 			write(aline, string'("{HALT}"));
 		else
 			write(aline, string'("{CYCLES}"));

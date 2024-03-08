@@ -1,9 +1,9 @@
--- File:        top.vhd
+-- File:        subsys.vhd
 -- Author:      Richard James Howe
 -- Repository:  https://github.com/howerj/subleq-vhdl
 -- Email:       howe.r.j.89@gmail.com
 -- License:     MIT
--- Description: Top level entity; SUBLEQ CPU
+-- Description: subsys level entity; SUBLEQ CPU
 --
 -- N.B. This could become another entity within the main project,
 -- and then two test benches could be part of the main project.
@@ -14,7 +14,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 use work.util.all;
 
-entity top is
+entity subsys is
 	generic (
 		g:               common_generics := default_settings;
 		file_name:       string          := "subleq.hex";
@@ -25,19 +25,19 @@ entity top is
 		uart_fifo_depth: natural         := 0
 	);
 	port (
-		clk:         in std_ulogic;
+		clk:          in std_ulogic;
 		-- synthesis translate_off
-		rst:         in std_ulogic;
-		halt:       out std_ulogic;
+		rst:           in std_ulogic;
+		halted:       out std_ulogic;
+		blocked:      out std_ulogic;
 		-- synthesis translate_on
 		obyte:        out std_ulogic_vector(7 downto 0);
 		ibyte:         in std_ulogic_vector(7 downto 0);
 		obsy, ihav:    in std_ulogic;
-		io_we, io_re: out std_ulogic 
-	);
+		io_we, io_re: out std_ulogic);
 end entity;
 
-architecture rtl of top is
+architecture rtl of subsys is
 	constant data_length: positive := N;
 	constant W:           positive := N - 3;
 	constant addr_length: positive := W;
@@ -54,7 +54,8 @@ begin
 		port map (
 			clk => clk, rst => rst,
 			-- synthesis translate_off
-			halt  => halt,
+			halted => halted,
+			blocked => blocked,
 			-- synthesis translate_on
 			pause => '0',
 			i     => i,

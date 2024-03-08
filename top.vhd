@@ -24,7 +24,8 @@ entity top is
 		clk:         in std_ulogic;
 		-- synthesis translate_off
 --		rst:         in std_ulogic;
-		halt:       out std_ulogic;
+		halted:     out std_ulogic;
+		blocked:    out std_ulogic;
 		-- synthesis translate_on
 		tx:         out std_ulogic;
 		rx:          in std_ulogic);
@@ -67,7 +68,8 @@ begin
 		port map (
 			clk => clk, rst => rst,
 			-- synthesis translate_off
-			halt  => halt,
+			halted  => halted,
+			blocked => blocked,
 			-- synthesis translate_on
 			pause => '0',
 			i     => i,

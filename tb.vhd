@@ -25,7 +25,7 @@ architecture testing of tb is
 
 	signal stop:   boolean    := false;
 	signal clk:    std_ulogic := '0';
-	signal halt:   std_ulogic := '0';
+	signal halted: std_ulogic := '0';
 	signal rst:    std_ulogic := '1';
 
 	signal saw_char: boolean := false;
@@ -115,7 +115,7 @@ begin
 		port map (
 			clk  => clk,
 --			rst  => rst,
-			halt => halt,
+			halted => halted,
 			tx   => tx,
 			rx   => rx);
 
@@ -163,14 +163,14 @@ begin
 		-- N.B. We could add clock jitter if we wanted, however we would
 		-- probably also want to add it to each of the modules clocks, along
 		-- with an adjustable delay.
-		while (count < cfg.clocks or cfg.forever)  and halt = '0' loop
+		while (count < cfg.clocks or cfg.forever)  and halted = '0' loop
 			clk <= '1';
 			wait for clock_period / 2;
 			clk <= '0';
 			wait for clock_period / 2;
 			count := count + 1;
 		end loop;
-		if halt = '1' then
+		if halted = '1' then
 			write(aline, string'("{HALT}"));
 		else
 			write(aline, string'("{CYCLES}"));

@@ -1,6 +1,7 @@
 CC=gcc
 CFLAGS=-Wall -Wextra -std=c99 -O2 -pedantic
 GHDL=ghdl
+GOPTS=--max-stack-alloc=16384 --ieee-asserts=disable
 USB?=/dev/ttyUSB0
 BAUD?=115200
 DIFF?=vimdiff
@@ -30,21 +31,30 @@ documentation: readme.htm
 subleq: subleq.c
 	${CC} ${CFLAGS} $< -o $@
 
-%.o: %.vhd
+%.an: %.vhd
 	${GHDL} -a -g $<
+	touch $@
 
 %.hex: %.dec hex
 	./hex $< > $@
 
-uart.o: uart.vhd util.o
+uart.an: uart.vhd util.an
 
+top.an: top.vhd subleq.an util.an uart.an
 
-top.o: top.vhd subleq.o util.o uart.o
+tb.an: tb.vhd subleq.an top.an
 
-tb.o: tb.vhd subleq.o top.o
-
-tb: tb.o subleq.o top.o
+tb: tb.an subleq.an top.an
 	${GHDL} -e $@
+	touch $@
+
+subsys.an: subsys.vhd subleq.an util.an
+
+fast_tb.an: util.an subsys.an subleq.an
+
+fast_tb: fast_tb.an subleq.an subsys.an util.an
+	${GHDL} -e $@
+	touch $@
 
 ${IMAGE}.hex: ${IMAGE}.dec hex
 	./hex ${IMAGE}.dec > $@
@@ -56,7 +66,11 @@ gforth: subleq gforth.dec
 	./subleq gforth.dec
 
 tb.ghw: tb tb.cfg subleq.hex
-	${GHDL} -r $< --wave=$<.ghw --max-stack-alloc=16384 --ieee-asserts=disable
+	${GHDL} -r $< --wave=$<.ghw ${GOPTS}
+
+fast_tb.ghw: fast_tb tb.cfg subleq.hex
+	${GHDL} -r $< --wave=$<.ghw ${GOPTS}
+
 
 SOURCES = \
 	top.vhd \

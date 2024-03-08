@@ -206,7 +206,7 @@ can be pasted into [GraphvizOnline][].
 	  out -> out [label="obsy = '1'"];
 	}
 
-## To Do List
+## To Do and Wish List
 
 * [x] Do core implementation
   * [x] Debug application
@@ -227,9 +227,19 @@ can be pasted into [GraphvizOnline][].
   * [x] Add a component that combines the Block RAM and SUBLEQ into one along
     with a test bench for it
   * [ ] Merge new module into main system.
-* [ ] Optimize SUBLEQ design for slice area (and speed if possible)
 * [ ] Get implementation working in hardware (need an FPGA board for this)
-* [ ] Find way of interacting with other hardware
+* [ ] Improve the SUBLEQ Core and system
+  * [ ] Find way of interacting with other hardware
+  * [ ] Currently there is no way for the SUBLEQ core to signal that it
+        is waiting on I/O. A `paused` line when either the `pause` line
+        is asserted, or when we are waiting for input or output would
+        suffice (we can determine why from other signals).
+  * [ ] Optimize SUBLEQ design for slice area (and speed if possible)
+  * [ ] Instead of loading hexadecimal files, load the original signed decimal 
+        files, this would simplify the build process and allow `hex.c` to be
+        removed.
+  * [ ] Use the UART from Nandland instead of my own, it appears to be smaller
+        and simpler (which would aid in simulation).
 * [x] Using Graphviz online, make a state-machine diagram
 
 ## Other SUBLEQ projects

@@ -54,18 +54,19 @@ entity subleq is
 		strict_io:          boolean    := true;   -- if true, I/O happens when `a` or `b` are -1, else when high bit set
 		debug:              natural    := 0);     -- debug level, 0 = off
 	port (
-		clk:           in std_ulogic;
-		rst:           in std_ulogic;
+		clk:           in std_ulogic; -- Guess what this is?
+		rst:           in std_ulogic; -- Can be sync or async
 		o:            out std_ulogic_vector(N - 1 downto 0);
 		i:             in std_ulogic_vector(N - 1 downto 0);
 		a:            out std_ulogic_vector(N - 1 downto 0);
-		we, re:       out std_ulogic;
+		we, re:       out std_ulogic; -- Write and read enable for memory only
 		obyte:        out std_ulogic_vector(7 downto 0); -- UART output byte
 		ibyte:         in std_ulogic_vector(7 downto 0); -- UART input byte
 		obsy, ihav:    in std_ulogic; -- Output busy / Have input
-		io_we, io_re: out std_ulogic; -- Write and read enable
-		pause:         in std_ulogic;
-		halt:         out std_ulogic);
+		io_we, io_re: out std_ulogic; -- Write and read enable for I/O (UART)
+		pause:         in std_ulogic; -- pause the CPU in the `S_A` state
+		blocked:      out std_ulogic; -- is the CPU paused, or blocking on I/O?
+		halted:       out std_ulogic); -- Is the system halted?
 end;
 
 architecture rtl of subleq is
@@ -170,12 +171,13 @@ begin
 
 	process (c, i, npc, io, leq, sub, ibyte, obsy, ihav, pause) begin
 		f <= c after delay;
-		halt <= '0' after delay;
+		halted <= '0' after delay;
 		io_we <= '0' after delay;
 		io_re <= '0' after delay;
 		we <= '0' after delay;
 		re <= '0' after delay;
 		a <= c.pc after delay;
+		blocked <= '0' after delay;
 		if c.pc(c.pc'high) = '1' then f.stop <= '1' after delay; end if;
 
 		case c.state is
@@ -197,6 +199,7 @@ begin
 			if c.stop = '1' then
 				f.state <= S_HALT after delay;
 			elsif pause = '1' then
+				blocked <= '1';
 				f.state <= S_A;
 			end if;
 		when S_B =>
@@ -257,22 +260,27 @@ begin
 			a <= c.b after delay; -- hold address
 			f.la <= (others => '0');
 			f.la(ibyte'range) <= ibyte;
+			blocked <= '1' after delay;
 			if ihav = '1' then
 				f.state <= S_STORE after delay;
 				io_re <= '1' after delay;
+				blocked <= '0' after delay;
 			elsif non_blocking_input then
 				f.state <= S_STORE after delay;
 				f.la <= (others => '1');
+				blocked <= '0' after delay;
 			end if;
 		when S_OUT =>
 			a <= c.pc after delay;
 			re <= '1' after delay;
+			blocked <= '1' after delay;
 			if obsy = '0' then
 				f.state <= S_A after delay;
 				io_we <= '1' after delay;
+				blocked <= '0' after delay;
 			end if;
 		when S_HALT =>
-			halt <= '1' after delay;
+			halted <= '1' after delay;
 		end case;
 	end process;
 end architecture;
