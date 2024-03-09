@@ -35,29 +35,13 @@ architecture rtl of top is
 	constant data_length: positive := N;
 	constant W:           positive := N - 3;
 	constant addr_length: positive := W;
-
-	signal tx_fifo_full:  std_ulogic := '0';
-	signal tx_fifo_empty: std_ulogic := '0';
-	signal tx_fifo_we:    std_ulogic := '0';
-	signal tx_fifo_data:  std_ulogic_vector(7 downto 0) := (others => '0');
-
-	signal rx_fifo_full:  std_ulogic := '0';
-	signal rx_fifo_empty: std_ulogic := '0';
-	signal rx_fifo_re:    std_ulogic := '0';
-	signal rx_fifo_data:  std_ulogic_vector(7 downto 0) := (others => '0');
-
-	signal reg:             std_ulogic_vector(15 downto 0) := (others => '0');
-	signal clock_reg_tx_we: std_ulogic := '0';
-	signal clock_reg_rx_we: std_ulogic := '0';
-	signal control_reg_we:  std_ulogic := '0';
+	constant clks_per_bit: integer := g.clock_frequency / baud;
 
 	signal rst:        std_ulogic := '0';
 	signal i, o, a:    std_ulogic_vector(N - 1 downto 0) := (others => 'U');
 	signal bsy, hav, re, we, io_re, io_we: std_ulogic := 'U';
 	signal obyte, ibyte: std_ulogic_vector(7 downto 0) := (others => 'U');
 begin
-	hav <= not rx_fifo_empty;
-	bsy <= not tx_fifo_empty;
 
 	system: entity work.system
 	generic map(
@@ -80,33 +64,26 @@ begin
 		io_we   => io_we, 
 		io_re   => io_re);
 
-	uart: entity work.uart_top
-		generic map (
-			clock_frequency    => g.clock_frequency,
-			delay              => g.delay,
-			asynchronous_reset => g.asynchronous_reset,
-			baud               => baud,
-			fifo_depth         => uart_fifo_depth,
-			use_cfg            => uart_use_cfg)
+	uart_tx_0: entity work.uart_tx
+		generic map(clks_per_bit => clks_per_bit)
 		port map(
-			clk => clk, rst => rst,
+			clk => clk,
+			i_tx_dv => io_we,
+			i_tx_byte => obyte,
+			o_tx_active => bsy,
+			o_tx_serial => tx,
+			o_tx_done => open);
 
-			tx               =>  tx,
-			tx_fifo_full     =>  tx_fifo_full,
-			tx_fifo_empty    =>  tx_fifo_empty,
-			tx_fifo_we       =>  io_we,
-			tx_fifo_data     =>  obyte,
+	-- TODO: Capture contents in register...
+	hav <= '0';
+	uart_rx_0: entity work.uart_rx
+		generic map(clks_per_bit => clks_per_bit)
+		port map(
+			clk => clk,
+			i_rx_serial => rx,
+			o_rx_dv => open,
+			o_rx_byte => ibyte);
 
-			rx               =>  rx,
-			rx_fifo_full     =>  rx_fifo_full,
-			rx_fifo_empty    =>  rx_fifo_empty,
-			rx_fifo_re       =>  io_re,
-			rx_fifo_data     =>  ibyte,
-
-			reg              =>  reg,
-			clock_reg_tx_we  =>  clock_reg_tx_we,
-			clock_reg_rx_we  =>  clock_reg_rx_we,
-			control_reg_we   =>  control_reg_we);
 end architecture;
 
 

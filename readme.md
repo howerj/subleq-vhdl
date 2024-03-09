@@ -240,6 +240,7 @@ can be pasted into [GraphvizOnline][].
     * [ ] Allow multiple numbers per line.
   * [ ] Use the UART from Nandland instead of my own, it appears to be smaller
         and simpler (which would aid in simulation).
+  * [ ] Hook up `blocked` and `halted` to an LED?
 * [x] Using Graphviz online, make a state-machine diagram
 * [ ] Make a block diagram of the system
 
