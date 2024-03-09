@@ -328,7 +328,6 @@ entity uart_rx_tb is
 end uart_rx_tb;
 
 architecture behave of uart_rx_tb is
-
 	-- Test Bench uses a 25 MHz Clock
 	constant clk_period: time := 40 ns;
 	
@@ -343,8 +342,6 @@ architecture behave of uart_rx_tb is
 	signal w_rx_byte: std_ulogic_vector(7 downto 0);
 	signal r_rx_serial: std_ulogic := '1';
 begin
-
-	-- Instantiate UART Receiver
 	uart_rx_inst: entity work.uart_rx
 		generic map (clks_per_bit => c_clks_per_bit)
 		port map (

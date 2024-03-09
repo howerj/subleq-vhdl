@@ -36,12 +36,43 @@ architecture rtl of top is
 	constant W:           positive := N - 3;
 	constant addr_length: positive := W;
 	constant clks_per_bit: integer := g.clock_frequency / baud;
+	constant delay:       time     := g.delay;
 
 	signal rst:        std_ulogic := '0';
 	signal i, o, a:    std_ulogic_vector(N - 1 downto 0) := (others => 'U');
 	signal bsy, hav, re, we, io_re, io_we: std_ulogic := 'U';
 	signal obyte, ibyte: std_ulogic_vector(7 downto 0) := (others => 'U');
+
+	signal c_hav, n_hav: std_ulogic := '0';
+	signal c_ibyte, n_ibyte: std_ulogic_vector(7 downto 0) := (others => '0');
 begin
+	process (clk, rst) begin
+		if rst = '1' and g.asynchronous_reset then
+			c_hav <= '0';
+			c_ibyte <= (others => '0');
+		elsif rising_edge(clk) then
+			c_hav <= n_hav after delay;
+			c_ibyte <= n_ibyte after delay;
+			if rst = '1' and not g.asynchronous_reset then
+				c_hav <= '0';
+				c_ibyte <= (others => '0');			
+			end if;
+		end if;
+	end process;
+
+	process (c_hav, c_ibyte, hav, ibyte, io_re) begin
+		n_hav <= c_hav after delay;
+		n_ibyte <= c_ibyte after delay;
+
+		if hav = '1' then
+			n_hav <= '1' after delay;
+			n_ibyte <= ibyte after delay;
+		end if;
+
+		if io_re = '1' then
+			n_hav <= '0' after delay;
+		end if;
+	end process;
 
 	system: entity work.system
 	generic map(
@@ -58,9 +89,9 @@ begin
 		blocked => blocked,
 		-- synthesis translate_on
 		obyte   => obyte,
-		ibyte   => ibyte,
+		ibyte   => c_ibyte,
 		obsy    => bsy,
-		ihav    => hav,
+		ihav    => c_hav,
 		io_we   => io_we, 
 		io_re   => io_re);
 
@@ -74,14 +105,12 @@ begin
 			o_tx_serial => tx,
 			o_tx_done => open);
 
-	-- TODO: Capture contents in register...
-	hav <= '0';
 	uart_rx_0: entity work.uart_rx
 		generic map(clks_per_bit => clks_per_bit)
 		port map(
 			clk => clk,
 			i_rx_serial => rx,
-			o_rx_dv => open,
+			o_rx_dv => hav,
 			o_rx_byte => ibyte);
 
 end architecture;
