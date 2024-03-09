@@ -20,6 +20,10 @@ Amazon, available [here](https://www.amazon.com/SUBLEQ-EFORTH-Forth-Metacompilat
 that describes how the eForth interpreter works and how to port a Forth to
 a new platform.
 
+A block diagram of the project for those with no imagination:
+
+![Super Complex System Diagram](system.png "SUBLEQ System Diagram")
+
 Note that this project, unlike many other SUBLEQ CPUs written for
 FPGAs in *whatever hardware description language* implements the full machine
 without any *weird differences*, includes Input/Output, and halting. It
