@@ -35,9 +35,6 @@ subleq: subleq.c
 	${GHDL} -a -g $<
 	touch $@
 
-%.hex: %.dec hex
-	./hex $< > $@
-
 uart.an: uart.vhd util.an
 
 top.an: top.vhd subleq.an util.an uart.an
@@ -48,16 +45,13 @@ tb: tb.an subleq.an top.an
 	${GHDL} -e $@
 	touch $@
 
-subsys.an: subsys.vhd subleq.an util.an
+system.an: system.vhd subleq.an util.an
 
-fast_tb.an: util.an subsys.an subleq.an
+fast_tb.an: util.an system.an subleq.an
 
-fast_tb: fast_tb.an subleq.an subsys.an util.an
+fast_tb: fast_tb.an subleq.an system.an util.an
 	${GHDL} -e $@
 	touch $@
-
-${IMAGE}.hex: ${IMAGE}.dec hex
-	./hex ${IMAGE}.dec > $@
 
 gforth.dec: eforth.txt
 	gforth $< > $@
@@ -65,10 +59,10 @@ gforth.dec: eforth.txt
 gforth: subleq gforth.dec
 	./subleq gforth.dec
 
-tb.ghw: tb tb.cfg subleq.hex
+tb.ghw: tb tb.cfg subleq.dec
 	${GHDL} -r $< --wave=$<.ghw ${GOPTS}
 
-fast_tb.ghw: fast_tb tb.cfg subleq.hex
+fast_tb.ghw: fast_tb tb.cfg subleq.dec
 	${GHDL} -r $< --wave=$<.ghw ${GOPTS}
 
 
@@ -115,7 +109,7 @@ tmp/top.xst: tmp tmp/_xmsgs tmp/top.lso tmp/top.lso
 	    echo "-opt_level 2" \
 	) > tmp/top.xst
 
-synthesis: subleq.hex reports tmp tmp/_xmsgs tmp/top.prj tmp/top.xst
+synthesis: subleq.dec reports tmp tmp/_xmsgs tmp/top.prj tmp/top.xst
 	@echo "Synthesis running..."
 	@${TIME} xst -intstyle silent -ifn tmp/top.xst -ofn reports/xst.log
 	@mv _xmsgs/* tmp/_xmsgs

@@ -1,9 +1,9 @@
--- File:        subsys.vhd
+-- File:        system.vhd
 -- Author:      Richard James Howe
 -- Repository:  https://github.com/howerj/subleq-vhdl
 -- Email:       howe.r.j.89@gmail.com
 -- License:     MIT
--- Description: subsys level entity; SUBLEQ CPU
+-- Description: system level entity; SUBLEQ CPU
 --
 -- N.B. This could become another entity within the main project,
 -- and then two test benches could be part of the main project.
@@ -14,10 +14,10 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 use work.util.all;
 
-entity subsys is
+entity system is
 	generic (
 		g:               common_generics := default_settings;
-		file_name:       string          := "subleq.hex";
+		file_name:       string          := "subleq.dec";
 		N:               positive        := 16;
 		baud:            positive        := 115200;
 		debug:           natural         := 0; -- will not synthesize if greater than zero (debug off = 0)
@@ -37,7 +37,7 @@ entity subsys is
 		io_we, io_re: out std_ulogic);
 end entity;
 
-architecture rtl of subsys is
+architecture rtl of system is
 	constant data_length: positive := N;
 	constant W:           positive := N - 3;
 	constant addr_length: positive := W;
@@ -75,7 +75,7 @@ begin
 		generic map(
 			g           => g,
 			file_name   => file_name,
-			file_type   => FILE_HEX,
+			file_type   => FILE_DECIMAL,
 			addr_length => addr_length,
 			data_length => data_length)
 		port map (

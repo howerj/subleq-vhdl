@@ -13,7 +13,7 @@ use work.util.all;
 entity top is
 	generic (
 		g:               common_generics := default_settings;
-		file_name:       string          := "subleq.hex";
+		file_name:       string          := "subleq.dec";
 		N:               positive        := 16;
 		baud:            positive        := 115200;
 		debug:           natural         := 0; -- will not synthesize if greater than zero (debug off = 0)
@@ -89,7 +89,7 @@ begin
 		generic map(
 			g           => g,
 			file_name   => file_name,
-			file_type   => FILE_HEX,
+			file_type   => FILE_DECIMAL,
 			addr_length => addr_length,
 			data_length => data_length)
 		port map (

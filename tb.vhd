@@ -20,7 +20,12 @@ architecture testing of tb is
 	constant clock_period:            time     := 1000 ms / g.clock_frequency;
 	constant baud:                    positive := 115200;
 	constant configuration_file_name: string := "tb.cfg";
-	constant program_file_name:       string := "subleq.hex";
+	constant program_file_name:       string := "subleq.dec";
+	--constant program_file_name:       string := "progs/hi.dec";
+	--constant program_file_name:       string := "progs/hello.dec";
+	--constant program_file_name:       string := "progs/echo.dec";
+	--constant program_file_name:       string := "progs/hi2.dec";
+
 	constant N:                       positive := 16;
 
 	signal stop:   boolean    := false;

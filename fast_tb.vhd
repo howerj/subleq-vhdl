@@ -3,7 +3,9 @@
 -- Repository:  https://github.com/howerj/subleq-vhdl
 -- Email:       howe.r.j.89@gmail.com
 -- License:     MIT
--- Description: Test bench for top level entity
+-- Description: Fast (Not UART) Test bench for top level entity
+--
+-- N.B. Ideally this would be merged with the other test bench.
 
 library ieee, work, std;
 use ieee.std_logic_1164.all;
@@ -19,11 +21,11 @@ architecture testing of fast_tb is
 	constant clock_period:            time     := 1000 ms / g.clock_frequency;
 	constant baud:                    positive := 115200;
 	constant configuration_file_name: string := "tb.cfg";
-	constant program_file_name:       string := "subleq.hex";
-	--constant program_file_name:       string := "../progs/hi.hex";
-	--constant program_file_name:       string := "../progs/hello.hex";
-	--constant program_file_name:       string := "../progs/echo.hex";
-	--constant program_file_name:       string := "../progs/hi2.hex";
+	constant program_file_name:       string := "subleq.dec";
+	--constant program_file_name:       string := "progs/hi.dec";
+	--constant program_file_name:       string := "progs/hello.dec";
+	--constant program_file_name:       string := "progs/echo.dec";
+	--constant program_file_name:       string := "progs/hi2.dec";
 	constant N:                       positive := 16;
 
 	signal stop:   boolean    := false;
@@ -83,7 +85,7 @@ architecture testing of fast_tb is
 	shared variable cfg: configurable_items := set_configuration_items(configuration_default);
 	signal configured: boolean := false;
 begin
-	uut: entity work.subsys
+	uut: entity work.system
 		generic map(
 			g          => g,
 			file_name  => program_file_name,

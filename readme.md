@@ -22,19 +22,18 @@ a new platform.
 
 Note that this project, unlike many other SUBLEQ CPUs written for
 FPGAs in *whatever hardware description language* implements the full machine
-without any *weird differences*, includes Input/Output, and halting.
+without any *weird differences*, includes Input/Output, and halting. It
+even reads the "standard" format used to describe SUBLEQ programs which
+consists of spaced delimited ASCII signed decimal values (currently 
+only one value is allowed per line, many SUBLEQ programs are stored all
+on one line with only spaces as separators).
+
 Weird/"non-standard" things include:
 
 - Not having a way to halt the CPU.
 - Having different bit widths for various operands.
 - Storing the negation of the input instead of just storing it.
 - Only being 8 bit (with 256 bytes for program storage).
-
-The only major difference between this system and most other SUBLEQ
-programs is that it is expected that the file containing the SUBLEQ
-program is provided as 16-bit hexadecimal values with no sign, normally
-SUBLEQ programs are specified as signed decimal values. This could
-be remedied in the future.
 
 The pseudo code for a SUBLEQ machine is:
 
@@ -230,14 +229,15 @@ can be pasted into [GraphvizOnline][].
 * [ ] Get implementation working in hardware (need an FPGA board for this)
 * [ ] Improve the SUBLEQ Core and system
   * [ ] Find way of interacting with other hardware
-  * [ ] Currently there is no way for the SUBLEQ core to signal that it
+  * [x] Currently there is no way for the SUBLEQ core to signal that it
         is waiting on I/O. A `paused` line when either the `pause` line
         is asserted, or when we are waiting for input or output would
         suffice (we can determine why from other signals).
   * [ ] Optimize SUBLEQ design for slice area (and speed if possible)
-  * [ ] Instead of loading hexadecimal files, load the original signed decimal 
+  * [x] Instead of loading hexadecimal files, load the original signed decimal 
         files, this would simplify the build process and allow `hex.c` to be
         removed.
+    * [ ] Allow multiple numbers per line.
   * [ ] Use the UART from Nandland instead of my own, it appears to be smaller
         and simpler (which would aid in simulation).
 * [x] Using Graphviz online, make a state-machine diagram

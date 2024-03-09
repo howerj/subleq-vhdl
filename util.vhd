@@ -28,7 +28,7 @@ package util is
 		asynchronous_reset => true
 	);
 
-	type file_format is (FILE_HEX, FILE_BINARY, FILE_NONE);
+	type file_format is (FILE_HEX, FILE_BINARY, FILE_DECIMAL, FILE_NONE);
 
 	component single_port_block_ram is
 	generic (g: common_generics;
@@ -207,6 +207,7 @@ architecture behav of single_port_block_ram is
 		file     in_file:    text is in the_file_name;
 		variable input_line: line;
 		variable tmp:        bit_vector(data_length - 1 downto 0);
+		variable int:        integer;
 		variable c:          character;
 		variable slv:        std_ulogic_vector(data_length - 1 downto 0);
 	begin
@@ -218,6 +219,13 @@ architecture behav of single_port_block_ram is
 				if the_file_type = FILE_BINARY then
 					read(input_line, tmp);
 					ram_data(i) := std_ulogic_vector(to_stdlogicvector(tmp));
+				elsif the_file_type = FILE_DECIMAL then
+					read(input_line, int);
+					if int < 0 then
+						int := (2**data_length) + int;
+					end if;
+					assert int < (2**data_length) and int >= 0 severity failure;
+					ram_data(i) := std_ulogic_vector(to_unsigned(int, tmp'length));
 				elsif the_file_type = FILE_HEX then -- hexadecimal
 					assert (data_length mod 4) = 0 report "(data_length%4)!=0" severity failure;
 					for j in 1 to (data_length/4) loop
