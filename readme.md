@@ -20,9 +20,27 @@ Amazon, available [here](https://www.amazon.com/SUBLEQ-EFORTH-Forth-Metacompilat
 that describes how the eForth interpreter works and how to port a Forth to
 a new platform.
 
-A block diagram of the project for those with no imagination:
+A block diagram of the project for those with no imagination (you can
+tell I am a programmer and not a graphic designer):
 
 ![Super Complex System Diagram](system.png "SUBLEQ System Diagram")
+
+The C simulator running (not that characters are echoed back to the user, just
+as they would be when using a UART, this can be disabled in the SUBLEQ image
+or in your terminal):
+
+![C Simulator Running](system0.gif "SUBLEQ C Simulator")
+
+The VHDL simulator is capable of *interactive* input and output, however
+as this already long GIF shows the simulator takes a long time to do anything
+and does not run long enough to simulate the input. Only the output is
+simulated (the Forth interpreter prints " ok" followed by a newline).
+
+![Interactive and slow VHDL Simulator](system1.gif "SUBLEQ VHDL Simulator")
+
+And here you can see the FPGA build system running:
+
+![BUILDING AND STUFF](system2.gif "FPGA build system")
 
 Note that this project, unlike many other SUBLEQ CPUs written for
 FPGAs in *whatever hardware description language* implements the full machine
@@ -246,7 +264,9 @@ can be pasted into [GraphvizOnline][].
         and simpler (which would aid in simulation).
   * [ ] Hook up `blocked` and `halted` to an LED?
 * [x] Using Graphviz online, make a state-machine diagram
-* [ ] Make a block diagram of the system
+* [x] Make a block diagram of the system
+* [x] Use ttygif/ttyrec to record a terminal session showing the simulation, synthesis
+      and running the C simulator.
 
 ## Other SUBLEQ projects
 
