@@ -19,7 +19,6 @@ end fast_tb;
 architecture testing of fast_tb is
 	constant g:                       common_generics := default_settings;
 	constant clock_period:            time     := 1000 ms / g.clock_frequency;
-	constant baud:                    positive := 115200;
 	constant configuration_file_name: string := "tb.cfg";
 	constant program_file_name:       string := "subleq.dec";
 	--constant program_file_name:       string := "progs/hi.dec";
@@ -90,7 +89,6 @@ begin
 			g          => g,
 			file_name  => program_file_name,
 			N          => N,
-			baud       => baud,
 			debug      => cfg.debug)
 		port map (
 			clk  => clk,

@@ -225,7 +225,7 @@ can be pasted into [GraphvizOnline][].
 * [ ] Make one big VHDL file containing an initial Forth image and place it in `subleq.vhd`?
   * [x] Add a component that combines the Block RAM and SUBLEQ into one along
     with a test bench for it
-  * [ ] Merge new module into main system.
+  * [x] Merge new module into main system.
 * [ ] Get implementation working in hardware (need an FPGA board for this)
 * [ ] Improve the SUBLEQ Core and system
   * [ ] Find way of interacting with other hardware
@@ -241,6 +241,7 @@ can be pasted into [GraphvizOnline][].
   * [ ] Use the UART from Nandland instead of my own, it appears to be smaller
         and simpler (which would aid in simulation).
 * [x] Using Graphviz online, make a state-machine diagram
+* [ ] Make a block diagram of the system
 
 ## Other SUBLEQ projects
 

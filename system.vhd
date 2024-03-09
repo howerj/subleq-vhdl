@@ -5,8 +5,16 @@
 -- License:     MIT
 -- Description: system level entity; SUBLEQ CPU
 --
--- N.B. This could become another entity within the main project,
--- and then two test benches could be part of the main project.
+-- This module instantiates the SUBLEQ CPU and a Block RAM with
+-- a program file specified via a generic.
+--
+-- The main reason to have this module and not instantiate everything in
+-- a top level module is for two reasons, firstly so that a test bench
+-- can interact with this subsystem without simulating any I/O peripherals
+-- (such as a UART) which is more expensive and so would slow down the
+-- simulation (a slower test bench that encompasses I/O as well should
+-- also be present) and secondly to make it easier to swap out I/O for
+-- other implementations and mechanisms.
 --
 
 library ieee, work, std;
@@ -16,18 +24,15 @@ use work.util.all;
 
 entity system is
 	generic (
-		g:               common_generics := default_settings;
-		file_name:       string          := "subleq.dec";
-		N:               positive        := 16;
-		baud:            positive        := 115200;
-		debug:           natural         := 0; -- will not synthesize if greater than zero (debug off = 0)
-		uart_use_cfg:    boolean         := false;
-		uart_fifo_depth: natural         := 0
+		g:         common_generics := default_settings;
+		file_name: string          := "subleq.dec";
+		N:         positive        := 16;
+		debug:     natural         := 0 -- will not synthesize if greater than zero (debug off = 0)
 	);
 	port (
-		clk:          in std_ulogic;
-		-- synthesis translate_off
+		clk:           in std_ulogic;
 		rst:           in std_ulogic;
+		-- synthesis translate_off
 		halted:       out std_ulogic;
 		blocked:      out std_ulogic;
 		-- synthesis translate_on
@@ -39,11 +44,10 @@ end entity;
 
 architecture rtl of system is
 	constant data_length: positive := N;
-	constant W:           positive := N - 3;
-	constant addr_length: positive := W;
+	constant addr_length: positive := N - 3;
 
-	signal i, o, a:    std_ulogic_vector(N - 1 downto 0) := (others => 'X');
-	signal re, we: std_ulogic := '0';
+	signal i, o, a: std_ulogic_vector(N - 1 downto 0) := (others => 'U');
+	signal re, we:  std_ulogic := 'U';
 begin
 	cpu: entity work.subleq
 		generic map (
@@ -52,24 +56,24 @@ begin
 			N                  => N,
 			debug              => debug)
 		port map (
-			clk => clk, rst => rst,
+			clk     => clk, 
+			rst     => rst,
 			-- synthesis translate_off
-			halted => halted,
+			halted  => halted,
 			blocked => blocked,
 			-- synthesis translate_on
-			pause => '0',
-			i     => i,
-			o     => o, 
-			a     => a, 
-			obsy  => obsy,
-			ihav  => ihav,
-			io_re => io_re,
-			io_we => io_we,
-			re    => re,
-			we    => we,
-			obyte => obyte,
-			ibyte => ibyte
-		);
+			pause   => '0',
+			i       => i,
+			o       => o, 
+			a       => a, 
+			obsy    => obsy,
+			ihav    => ihav,
+			io_re   => io_re,
+			io_we   => io_we,
+			re      => re,
+			we      => we,
+			obyte   => obyte,
+			ibyte   => ibyte);
 
 	bram: entity work.single_port_block_ram
 		generic map(

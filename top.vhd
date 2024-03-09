@@ -52,54 +52,33 @@ architecture rtl of top is
 	signal control_reg_we:  std_ulogic := '0';
 
 	signal rst:        std_ulogic := '0';
-	signal i, o, a:    std_ulogic_vector(N - 1 downto 0) := (others => 'X');
-	signal bsy, hav, re, we, io_re, io_we: std_ulogic := 'X';
-	signal obyte, ibyte: std_ulogic_vector(7 downto 0) := (others => 'X');
+	signal i, o, a:    std_ulogic_vector(N - 1 downto 0) := (others => 'U');
+	signal bsy, hav, re, we, io_re, io_we: std_ulogic := 'U';
+	signal obyte, ibyte: std_ulogic_vector(7 downto 0) := (others => 'U');
 begin
 	hav <= not rx_fifo_empty;
 	bsy <= not tx_fifo_empty;
 
-	cpu: entity work.subleq
-		generic map (
-			asynchronous_reset => g.asynchronous_reset,
-			delay              => g.delay,
-			N                  => N,
-			debug              => debug)
-		port map (
-			clk => clk, rst => rst,
-			-- synthesis translate_off
-			halted  => halted,
-			blocked => blocked,
-			-- synthesis translate_on
-			pause => '0',
-			i     => i,
-			o     => o, 
-			a     => a, 
-			obsy  => bsy,
-			ihav  => hav,
-			io_re => io_re,
-			io_we => io_we,
-			re    => re,
-			we    => we,
-			obyte => obyte,
-			ibyte => ibyte
-		);
-
-	bram: entity work.single_port_block_ram
-		generic map(
-			g           => g,
-			file_name   => file_name,
-			file_type   => FILE_DECIMAL,
-			addr_length => addr_length,
-			data_length => data_length)
-		port map (
-			clk  => clk,
-			dwe  => we,
-			addr => a(addr_length - 1 downto 0),
-			dre  => re,
-			din  => o,
-			dout => i);
-
+	system: entity work.system
+	generic map(
+		g => g,
+		file_name => file_name,
+		N => N,
+		debug => debug
+	)
+	port map (
+		clk     => clk,
+		rst     => rst,
+		-- synthesis translate_off
+		halted  => halted,
+		blocked => blocked,
+		-- synthesis translate_on
+		obyte   => obyte,
+		ibyte   => ibyte,
+		obsy    => bsy,
+		ihav    => hav,
+		io_we   => io_we, 
+		io_re   => io_re);
 
 	uart: entity work.uart_top
 		generic map (

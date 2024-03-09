@@ -37,11 +37,11 @@ subleq: subleq.c
 
 uart.an: uart.vhd util.an
 
-top.an: top.vhd subleq.an util.an uart.an
+top.an: top.vhd subleq.an system.an util.an uart.an
 
-tb.an: tb.vhd subleq.an top.an
+tb.an: tb.vhd top.an
 
-tb: tb.an subleq.an top.an
+tb: tb.an top.an
 	${GHDL} -e $@
 	touch $@
 
@@ -70,6 +70,7 @@ SOURCES = \
 	top.vhd \
 	subleq.vhd \
 	uart.vhd \
+	system.vhd \
 	util.vhd
 
 OBJECTS = ${SOURCES:.vhd=.o}
