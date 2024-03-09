@@ -245,18 +245,12 @@ begin
 				else
 					eoi := true;
 					report "UART -> BCPU EOL/EOI: " & integer'image(character'pos(CR)) & " CR";
-					c := CR;
-					ibyte <= std_ulogic_vector(to_unsigned(character'pos(c), ibyte'length));
-					ihav <= '1';
-					wait for clock_period;
-					wait until io_re = '1' or stop;
-					ihav <= '0';
+					write_byte(CR, io_re, stop, ihav, ibyte);
 					wait for cfg.uart_char_delay;
 					if stop then exit; end if;
 					report "UART -> BCPU EOL/EOI: " & integer'image(character'pos(LF)) & " LF";
 					c := LF;
 				end if;
-				-- N.B. Writing a byte should be turned into a procedure
 				write_byte(c, io_re, stop, ihav, ibyte);
 				wait for cfg.uart_char_delay;
 			end loop;

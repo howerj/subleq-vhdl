@@ -19,6 +19,9 @@ architecture testing of tb is
 	constant g:                       common_generics := default_settings;
 	constant clock_period:            time     := 1000 ms / g.clock_frequency;
 	constant baud:                    positive := 115200;
+	constant clks_per_bit:            integer  := g.clock_frequency / baud;
+	constant bit_delay:               time     := clks_per_bit * 10 ns;
+	constant N:                       positive := 16;
 	constant configuration_file_name: string := "tb.cfg";
 	constant program_file_name:       string := "subleq.dec";
 	--constant program_file_name:       string := "progs/hi.dec";
@@ -26,26 +29,19 @@ architecture testing of tb is
 	--constant program_file_name:       string := "progs/echo.dec";
 	--constant program_file_name:       string := "progs/hi2.dec";
 
-	constant N:                       positive := 16;
 
 	signal stop:   boolean    := false;
 	signal clk:    std_ulogic := '0';
 	signal halted: std_ulogic := '0';
 	signal rst:    std_ulogic := '1';
-
 	signal saw_char: boolean := false;
 
 	-- UART
-	signal tx:             std_ulogic := '0';
-	signal tx_fifo_full:   std_ulogic := '0';
-	signal tx_fifo_empty:  std_ulogic := '0';
-	signal tx_fifo_we:     std_ulogic := '0';
-	signal tx_fifo_data:   std_ulogic_vector(7 downto 0) := (others => '0');
-	signal rx:             std_ulogic := '0'; 
-	signal rx_fifo_full:   std_ulogic := '0'; 
-	signal rx_fifo_empty:  std_ulogic := '0'; 
-	signal rx_fifo_re:     std_ulogic := '0';
-	signal rx_fifo_data:   std_ulogic_vector(7 downto 0) := (others => '0');
+	signal tx:      std_ulogic := '1';
+	signal tx_data: std_ulogic_vector(7 downto 0) := (others => '0');
+	signal rx:      std_ulogic := '1'; 
+	signal rx_hav:  std_ulogic := '0'; 
+	signal rx_data: std_ulogic_vector(7 downto 0) := (others => '0');
 
 	-- Test bench configurable options --
 
@@ -89,26 +85,8 @@ architecture testing of tb is
 	);
 
 	-- Test bench configurable options --
-
 	shared variable cfg: configurable_items := set_configuration_items(configuration_default);
 	signal configured: boolean := false;
-
-	procedure uart_write_byte(
-		bit_period: in time; -- 8680 ns for 115200
-		din: in std_logic_vector(7 downto 0);
-		signal utx: out std_logic) is -- Make sure to set to '1' during signal declaration.
-	begin -- Test Bench Low Level UART Write byte (pretty neat) 8N1 format only
-		utx <= '0'; -- Send Start Bit
-		wait for bit_period;
-		
-		for i in 0 to din'high loop -- Send Data Byte
-			utx <= din(i);
-			wait for bit_period;
-		end loop;
-		
-		utx <= '1'; -- Send Stop Bit
-		wait for bit_period;
-	end;
 begin
 	uut: entity work.top
 		generic map(
@@ -121,42 +99,16 @@ begin
 			clk  => clk,
 --			rst  => rst,
 			halted => halted,
-			tx   => tx,
-			rx   => rx);
+			tx   => rx,
+			rx   => tx);
 
-	uart_0_blk: block
-		signal uart_clock_rx_we, uart_clock_tx_we, uart_control_we: std_ulogic := '0';
-		signal uart_reg: std_ulogic_vector(15 downto 0);
-	begin
-		uart_0: work.uart_pkg.uart_top
-			generic map (
-				baud => baud, 
-				clock_frequency => g.clock_frequency, 
-				delay => 0 ns, 
-				asynchronous_reset => g.asynchronous_reset,
-				use_cfg => false,
-				fifo_depth => 4)
-			port map (
-				clk              =>  clk,
-				rst              =>  rst,
-
-				tx               =>  rx,
-				tx_fifo_full     =>  tx_fifo_full,
-				tx_fifo_empty    =>  tx_fifo_empty,
-				tx_fifo_we       =>  tx_fifo_we,
-				tx_fifo_data     =>  tx_fifo_data,
-
-				rx               =>  tx,
-				rx_fifo_full     =>  rx_fifo_full,
-				rx_fifo_empty    =>  rx_fifo_empty,
-				rx_fifo_re       =>  rx_fifo_re,
-				rx_fifo_data     =>  rx_fifo_data,
-
-				reg              =>  uart_reg,
-				clock_reg_tx_we  =>  uart_clock_tx_we,
-				clock_reg_rx_we  =>  uart_clock_rx_we,
-				control_reg_we   =>  uart_control_we);
-	end block;
+	uart_rx_0: entity work.uart_rx
+		generic map(clks_per_bit => clks_per_bit)
+		port map(
+			clk         => clk,
+			i_rx_serial => rx,
+			o_rx_dv     => rx_hav,
+			o_rx_byte   => rx_data);
 
 	clock_process: process
 		variable count: integer := 0;
@@ -194,9 +146,17 @@ begin
 		variable configuration_values: configuration_items(configuration_default'range) := configuration_default;
 	begin
 		-- write_configuration_tb(configuration_file_name, configuration_default);
+		report "CPU Size:         " & positive'image(N);
+		report "Baud:             " & positive'image(baud);
+		report "Clocks Per Bit:   " & integer'image(clks_per_bit);
+		report "Bit Delay (ns):   " & time'image(bit_delay);
+		report "Program:          " & program_file_name;
+		report "Config File Name: " & configuration_file_name;
+
 		read_configuration_tb(configuration_file_name, configuration_values);
 		cfg := set_configuration_items(configuration_values);
 		configured <= true;
+		report "Configuration Complete";
 
 		rst <= '1';
 		wait for clock_period;
@@ -204,7 +164,7 @@ begin
 
 		configured <= true;
 		while not stop loop
-			if rx_fifo_empty = '0' then saw_char <= true; end if;
+			if rx_hav = '1' then saw_char <= true; end if;
 			wait for clock_period;
 		end loop;
 		if saw_char then
@@ -230,22 +190,19 @@ begin
 
 		report "Writing to STDOUT";
 		while not stop loop
-			wait until (rx_fifo_empty = '0' or stop);
+			wait until (rx_hav = '1' or stop);
 			if not stop then
-				wait for clock_period;
-				rx_fifo_re <= '1';
-				wait for clock_period;
-				rx_fifo_re <= '0';
-				c := character'val(to_integer(unsigned(rx_fifo_data)));
+				c := character'val(to_integer(unsigned(rx_data)));
 				if (cfg.report_uart) then
-					report "BCPU -> UART CHAR: " & integer'image(to_integer(unsigned(rx_fifo_data))) & " CH: " & c;
+					report "BCPU -> UART CHAR: " & integer'image(to_integer(unsigned(rx_data))) & " CH: " & c;
 				end if;
 				write(oline, c);
 				have_char := true;
-				if rx_fifo_data = x"0d" then
+				if rx_data = x"0d" then
 					writeline(output, oline);
 					have_char := false;
 				end if;
+				wait for clock_period;
 			end if;
 		end loop;
 		if have_char then
@@ -265,8 +222,6 @@ begin
 		variable good: boolean := true;
 		variable eoi:  boolean := false;
 	begin
-		tx_fifo_we <= '0';
-		tx_fifo_data <= x"00";
 		wait until configured;
 
 		if cfg.interactive < 2 then
@@ -289,22 +244,15 @@ begin
 					report "UART -> BCPU CHAR: " & integer'image(character'pos(c)) & " CH: " & c;
 				else
 					eoi := true;
-
 					report "UART -> BCPU EOL/EOI: " & integer'image(character'pos(CR)) & " CR";
 					c := CR;
-					tx_fifo_data <= std_ulogic_vector(to_unsigned(character'pos(c), tx_fifo_data'length));
-					tx_fifo_we <= '1';
-					wait for clock_period;
-					tx_fifo_we <= '0';
+					uart_write_byte(bit_delay, std_ulogic_vector(to_unsigned(character'pos(c), tx_data'length)), tx);
 					wait for cfg.uart_char_delay;
 					if stop then exit; end if;
 					report "UART -> BCPU EOL/EOI: " & integer'image(character'pos(LF)) & " LF";
 					c := LF;
 				end if;
-				tx_fifo_data <= std_ulogic_vector(to_unsigned(character'pos(c), tx_fifo_data'length));
-				tx_fifo_we <= '1';
-				wait for clock_period;
-				tx_fifo_we <= '0';
+				uart_write_byte(bit_delay, std_ulogic_vector(to_unsigned(character'pos(c), tx_data'length)), tx);
 				wait for cfg.uart_char_delay;
 			end loop;
 			if cfg.input_single_line then exit; end if;

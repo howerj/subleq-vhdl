@@ -10,6 +10,8 @@ IMAGE=subleq
 
 .PHONY: all run diff simulation viewer clean documentation synthesis implementation bitfile
 
+.PRECIOUS: tb.ghw fast_tb.ghw
+
 all: subleq simulation
 
 run: subleq ${IMAGE}.dec
