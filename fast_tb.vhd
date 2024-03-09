@@ -205,6 +205,20 @@ begin
 		variable iline: line;
 		variable good: boolean := true;
 		variable eoi:  boolean := false;
+
+		procedure write_byte(
+			ch: in character;
+			signal read_enable: in std_ulogic;
+			signal halt_system: in boolean;
+			signal have_byte: out std_ulogic;
+			signal byte_output: out std_ulogic_vector(7 downto 0)) is
+		begin
+			byte_output <= std_ulogic_vector(to_unsigned(character'pos(ch), byte_output'length));
+			have_byte <= '1';
+			wait for clock_period;
+			wait until read_enable = '1' or halt_system;
+			have_byte <= '0';
+		end procedure;
 	begin
 		ihav <= '0';
 		ibyte <= x"00";
@@ -242,11 +256,8 @@ begin
 					report "UART -> BCPU EOL/EOI: " & integer'image(character'pos(LF)) & " LF";
 					c := LF;
 				end if;
-				ibyte <= std_ulogic_vector(to_unsigned(character'pos(c), ibyte'length));
-				ihav <= '1';
-				wait for clock_period;
-				wait until io_re = '1' or stop;
-				ihav <= '0';
+				-- N.B. Writing a byte should be turned into a procedure
+				write_byte(c, io_re, stop, ihav, ibyte);
 				wait for cfg.uart_char_delay;
 			end loop;
 			if cfg.input_single_line then exit; end if;
