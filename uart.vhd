@@ -9,12 +9,6 @@
 -- <https://github.com/howerj/forth-cpu>. The original copyright
 -- notice is:
 --
--- TODO:
--- * [ ] Change naming conventions, style, whitespace
--- * [x] Integrate into main project
--- * [ ] Optional sync/async reset?
--- * [ ] Make system more configurable (N-Bit), invert, ...
---
 -- -------------------------------------------------------------------------------
 --
 -- MIT License
@@ -50,23 +44,23 @@ use ieee.numeric_std.all;
 
 package uart_pkg is
 	component uart_rx is
-		generic (clks_per_bit : integer := 217);
+		generic (clks_per_bit: integer := 217; N: positive := 8);
 		port (
 			clk:          in  std_ulogic;
-			i_rx_serial:  in  std_ulogic;
+			rx_serial:  in  std_ulogic;
 			o_rx_dv:     out std_ulogic;
-			o_rx_byte:   out std_ulogic_vector(7 downto 0));
+			rx_byte:   out std_ulogic_vector(N - 1 downto 0));
 	end component;
 
 	component uart_tx is
-		generic (clks_per_bit: integer := 217);
+		generic (clks_per_bit: integer := 217; N: positive := 8);
 		port (
-			clk:          in  std_ulogic;
-			i_tx_dv:      in  std_ulogic;
-			i_tx_byte:    in  std_ulogic_vector(7 downto 0);
-			o_tx_active: out std_ulogic;
-			o_tx_serial: out std_ulogic;
-			o_tx_done:   out std_ulogic);
+			clk:        in  std_ulogic;
+			tx_we:      in  std_ulogic;
+			tx_byte:    in  std_ulogic_vector(N - 1 downto 0);
+			tx_active: out std_ulogic;
+			tx_serial: out std_ulogic;
+			tx_done:   out std_ulogic);
 	end component;
 
 	component uart_rx_tb is
@@ -79,11 +73,6 @@ package uart_pkg is
 		bit_period: in time; -- 8680 ns for 115200
 		data_input_byte: in std_ulogic_vector(7 downto 0);
 		signal tx_line: out std_ulogic);
-
---	procedure uart_write_byte( -- Simulation only
---		bit_period: in time; -- 8680 ns for 115200
---		data_input_byte: in character;
---		signal tx_line: out std_ulogic);
 end package;
 
 package body uart_pkg is
@@ -103,14 +92,6 @@ package body uart_pkg is
 		tx_line <= '1'; -- Send Stop Bit
 		wait for bit_period;
 	end;
-
---	procedure uart_write_byte(
---		bit_period: in time; -- 8680 ns for 115200
---		data_input_byte: character;
---		signal tx_line: out std_ulogic) is -- Make sure to set to '1' during signal declaration.
---	begin
---		uart_write_byte(bit_period, std_ulogic_vector(to_unsigned(character'pos(data_input_byte), 8)), tx_line);
---	end;
 end;
 
 -- This file contains the UART Receiver.  This receiver is able to
@@ -129,24 +110,22 @@ use ieee.numeric_std.all;
 use work.uart_pkg.all;
 
 entity uart_rx is
-	generic (clks_per_bit: integer := 217);
+	generic (clks_per_bit: integer := 217; N: positive := 8);
 	port (
 		clk: in std_ulogic;
-		i_rx_serial: in std_ulogic;
+		rx_serial: in std_ulogic;
 		o_rx_dv: out std_ulogic;
-		o_rx_byte: out std_ulogic_vector(7 downto 0));
+		rx_byte: out std_ulogic_vector(N - 1 downto 0));
 end entity;
 
 architecture rtl of uart_rx is
 	type state_t is (s_idle, s_rx_start_bit, s_rx_data_bits, s_rx_stop_bit, s_cleanup);
 	signal state: state_t := s_idle;
-
 	signal r_clk_count: integer range 0 to clks_per_bit - 1 := 0;
-	signal bit_index: integer range 0 to 7 := 0; -- 8 bits total
-	signal r_rx_byte:   std_ulogic_vector(7 downto 0) := (others => '0');
+	signal bit_index:   integer range 0 to N - 1 := 0;
+	signal r_rx_byte:   std_ulogic_vector(rx_byte'range) := (others => '0');
 	signal r_rx_dv:     std_ulogic := '0';
 begin
-
 	process (clk)
 	begin
 		if rising_edge(clk) then
@@ -155,14 +134,14 @@ begin
 				r_rx_dv <= '0';
 				r_clk_count <= 0;
 				bit_index <= 0;
-				if i_rx_serial = '0' then -- Start bit detected
+				if rx_serial = '0' then -- Start bit detected
 					state <= s_rx_start_bit;
 				else
 					state <= s_idle;
 				end if;
 			when s_RX_Start_Bit => -- Check middle of start bit to make sure it's still low
 				if r_clk_count = (clks_per_bit - 1) / 2 then
-					if i_rx_serial = '0' then
+					if rx_serial = '0' then
 						r_clk_count <= 0; -- reset counter since we found the middle
 						state <= s_rx_data_bits;
 					else
@@ -178,7 +157,7 @@ begin
 					state <= s_rx_data_bits;
 				else
 					r_clk_count <= 0;
-					r_rx_byte(bit_index) <= i_rx_serial;
+					r_rx_byte(bit_index) <= rx_serial;
 					
 					-- Check if we have sent out all bits
 					if bit_index < 7 then
@@ -209,12 +188,12 @@ begin
 	end process;
 
 	o_rx_dv <= r_rx_dv;
-	o_rx_byte <= r_rx_byte;
+	rx_byte <= r_rx_byte;
 end RTL;
 
 -- This file module contains the UART Transmitter.  This transmitter is able
 -- to transmit 8 bits of serial data, one start bit, one stop bit,
--- and no parity bit.  When transmit is complete o_tx_done will be
+-- and no parity bit.  When transmit is complete tx_done will be
 -- driven high for one clock cycle.
 --
 -- Set Generic clks_per_bit as follows:
@@ -228,14 +207,14 @@ use ieee.numeric_std.all;
 use work.uart_pkg.all;
 
 entity uart_tx is
-	generic (clks_per_bit: integer := 217);
+	generic (clks_per_bit: integer := 217; N: positive := 8);
 	port (
-		clk:          in std_ulogic;
-		i_tx_dv:      in std_ulogic;
-		i_tx_byte:    in std_ulogic_vector(7 downto 0);
-		o_tx_active: out std_ulogic;
-		o_tx_serial: out std_ulogic;
-		o_tx_done:   out std_ulogic);
+		clk:        in std_ulogic;
+		tx_we:      in std_ulogic;
+		tx_byte:    in std_ulogic_vector(N - 1 downto 0);
+		tx_active: out std_ulogic;
+		tx_serial: out std_ulogic;
+		tx_done:   out std_ulogic);
 end entity;
 
 architecture rtl of uart_tx is
@@ -243,8 +222,8 @@ architecture rtl of uart_tx is
 	signal state: state_t := idle;
 
 	signal r_clk_count: integer range 0 to clks_per_bit - 1 := 0;
-	signal bit_index: integer range 0 to i_tx_byte'high := 0;  -- 8 bits total
-	signal r_tx_data: std_ulogic_vector(i_tx_byte'range) := (others => '0');
+	signal bit_index: integer range 0 to tx_byte'high := 0;
+	signal r_tx_data: std_ulogic_vector(tx_byte'range) := (others => '0');
 	signal r_tx_done: std_ulogic := '0';
 begin
 	process (clk)
@@ -253,20 +232,20 @@ begin
 			r_tx_done <= '0'; -- Default assignment
 			case state is
 			when idle =>
-				o_tx_active <= '0';
-				o_tx_serial <= '1'; -- Drive Line High for Idle
+				tx_active <= '0';
+				tx_serial <= '1'; -- Drive Line High for Idle
 				r_clk_count <= 0;
 				bit_index <= 0;
 
-				if i_tx_dv = '1' then
-					r_tx_data <= i_tx_byte;
+				if tx_we = '1' then
+					r_tx_data <= tx_byte;
 					state <= tx_start_bit;
 				else
 					state <= idle;
 				end if;
 			when tx_start_bit => -- Send out Start Bit. Start bit = 0
-				o_tx_active <= '1';
-				o_tx_serial <= '0';
+				tx_active <= '1';
+				tx_serial <= '0';
 
 				-- Wait clks_per_bit - 1 clock cycles for start bit to finish
 				if r_clk_count < clks_per_bit - 1 then
@@ -277,7 +256,7 @@ begin
 					state <= tx_data_bits;
 				end if;
 			when tx_data_bits => -- Wait clks_per_bit - 1 clock cycles for data bits to finish
-				o_tx_serial <= r_tx_data(bit_index);
+				tx_serial <= r_tx_data(bit_index);
 				
 				if r_clk_count < clks_per_bit - 1 then
 					r_clk_count <= r_clk_count + 1;
@@ -286,7 +265,7 @@ begin
 					r_clk_count <= 0;
 					
 					-- Check if we have sent out all bits
-					if bit_index < i_tx_byte'high then
+					if bit_index < tx_byte'high then
 						bit_index <= bit_index + 1;
 						state <= tx_data_bits;
 					else
@@ -295,7 +274,7 @@ begin
 					end if;
 				end if;
 			when tx_stop_bit => -- Send out Stop bit. Stop bit = 1
-				o_tx_serial <= '1';
+				tx_serial <= '1';
 
 				-- Wait clks_per_bit - 1 clock cycles for Stop bit to finish
 				if r_clk_count < clks_per_bit - 1 then
@@ -307,14 +286,14 @@ begin
 					state <= cleanup;
 				end if;
 			when cleanup => -- Stay here 1 clock
-				o_tx_active <= '0';
+				tx_active <= '0';
 				state <= idle;
 			when others =>
 				state <= idle;
 			end case;
 		end if;
 	end process;
-	o_tx_done <= r_tx_done;
+	tx_done <= r_tx_done;
 end architecture;
 ----------------------------------------------------------------------
 -- Tests RX Behavior
@@ -327,46 +306,49 @@ use work.uart_pkg.all;
 entity uart_rx_tb is
 end uart_rx_tb;
 
-architecture behave of uart_rx_tb is
-	-- Test Bench uses a 25 MHz Clock
-	constant clk_period: time := 40 ns;
-	
-	-- Want to interface to 115200 baud UART
-	-- 25000000 / 115200 = 217 Clocks Per Bit.
-	constant c_clks_per_bit: integer := 217;
+architecture testing of uart_rx_tb is
+	constant clock_frequency: positive := 25_000_000;
+	constant clock_period:    time     := 1000 ms / clock_frequency;
+	constant baud:            positive := 115200;
+	constant clks_per_bit:    integer  := clock_frequency / baud;
+	constant bit_period:      time     := clks_per_bit * clock_period;
 
-	-- 1/115200:
-	constant c_bit_period: time := 8680 ns;
-	
 	signal clk: std_ulogic := '0';
-	signal w_rx_byte: std_ulogic_vector(7 downto 0);
-	signal r_rx_serial: std_ulogic := '1';
+	signal rx_byte: std_ulogic_vector(7 downto 0);
+	signal rx_serial: std_ulogic := '1';
+	signal stop: boolean := false;
 begin
 	uart_rx_inst: entity work.uart_rx
-		generic map (clks_per_bit => c_clks_per_bit)
+		generic map (clks_per_bit => clks_per_bit)
 		port map (
 			clk => clk,
-			i_rx_serial => r_rx_serial,
+			rx_serial => rx_serial,
 			o_rx_dv => open,
-			o_rx_byte => w_rx_byte);
+			rx_byte => rx_byte);
 
-	clk <= not clk after clk_period/2;
-	
+	clock_process: process
+	begin
+		while not stop loop
+			clk <= '1';
+			wait for clock_period / 2;
+			clk <= '0';
+			wait for clock_period / 2;
+		end loop;
+		wait;
+	end process;
 	process is
 	begin
-		-- Send a command to the UART
 		wait until rising_edge(clk);
-		uart_write_byte(c_bit_period, x"3F", r_rx_serial);
+		uart_write_byte(bit_period, x"3F", rx_serial);
 		wait until rising_edge(clk);
 
-		-- Check that the correct command was received
-		if w_rx_byte = x"3F" then
-			report "Test Passed - Correct Byte Received" severity note;
+		if rx_byte = x"3F" then
+			report "UART RX TB: Test Passed - Correct Byte Received";
 		else 
-			report "Test Failed - Incorrect Byte Received" severity note;
+			report "UART RX TB: Test Failed - Incorrect Byte Received" severity failure;
 		end if;
-
-		assert false report "Tests Complete" severity failure;
+		stop <= true;
+		wait;
 	end process;
 end architecture;
 ----------------------------------------------------------------------
@@ -380,69 +362,72 @@ use work.uart_pkg.all;
 entity uart_tb is
 end uart_tb;
 
-architecture behave of uart_tb is
-	-- Test Bench uses a 25 MHz Clock
-	constant clk_period: time := 40 ns;
-	
-	-- Want to interface to 115200 baud UART
-	-- 25000000 / 115200 = 217 Clocks Per Bit.
-	constant c_clks_per_bit: integer := 217;
-
-	constant c_bit_period: time := 8680 ns;
+architecture testing of uart_tb is
+	constant clock_frequency: positive := 25_000_000;
+	constant clock_period:    time     := 1000 ms / clock_frequency;
+	constant baud:            positive := 115200;
+	constant clks_per_bit:    integer  := clock_frequency / baud;
+	constant bit_period:      time     := clks_per_bit * clock_period;
 	
 	signal clk: std_ulogic := '0';
-	signal r_tx_dv: std_ulogic := '0';
-	signal r_tx_byte: std_ulogic_vector(7 downto 0) := (others => '0');
-	signal w_tx_serial: std_ulogic;
-	signal w_tx_done: std_ulogic;
-	signal w_rx_dv: std_ulogic;
-	signal w_rx_byte: std_ulogic_vector(7 downto 0);
-	signal r_rx_serial: std_ulogic := '1';
+	signal tx_dv: std_ulogic := '0';
+	signal tx_byte: std_ulogic_vector(7 downto 0) := (others => '0');
+	signal tx_serial, tx_done: std_ulogic := 'U';
+	signal rx_dv: std_ulogic := 'U';
+	signal rx_serial: std_ulogic := '1';
+	signal rx_byte: std_ulogic_vector(7 downto 0) := (others => 'U');
+	signal stop: boolean := false;
 begin
 	uart_tx_inst: entity work.uart_tx
-		generic map (clks_per_bit => c_clks_per_bit)
+		generic map (clks_per_bit => clks_per_bit)
 		port map (
 			clk => clk,
-			i_tx_dv => r_tx_dv,
-			i_tx_byte => r_tx_byte,
-			o_tx_active => open,
-			o_tx_serial => w_tx_serial,
-			o_tx_done => w_tx_done);
+			tx_we => tx_dv,
+			tx_byte => tx_byte,
+			tx_active => open,
+			tx_serial => tx_serial,
+			tx_done => tx_done);
 
 	uart_rx_inst: entity work.uart_rx
-		generic map (clks_per_bit => c_clks_per_bit)
+		generic map (clks_per_bit => clks_per_bit)
 		port map (
 			clk => clk,
-			i_rx_serial => r_rx_serial,
-			o_rx_dv => w_rx_dv,
-			o_rx_byte => w_rx_byte);
+			rx_serial => rx_serial,
+			o_rx_dv => rx_dv,
+			rx_byte => rx_byte);
 
-	clk <= not clk after clk_period/2;
-	
+	clock_process: process
+	begin
+		while not stop loop
+			clk <= '1';
+			wait for clock_period / 2;
+			clk <= '0';
+			wait for clock_period / 2;
+		end loop;
+		wait;
+	end process;
+
 	process is
 	begin
-		-- Tell the UART to send a command.
 		wait until rising_edge(clk);
 		wait until rising_edge(clk);
-		r_tx_dv <= '1';
-		r_tx_byte <= x"AB";
+		tx_dv <= '1';
+		tx_byte <= x"AB";
 		wait until rising_edge(clk);
-		r_tx_dv <= '0';
-		wait until w_tx_done = '1';
+		tx_dv <= '0';
+		wait until tx_done = '1';
 
-		-- Send a command to the UART
 		wait until rising_edge(clk);
-		uart_write_byte(c_bit_period, x"37", r_rx_serial);
+		uart_write_byte(bit_period, x"37", rx_serial);
 		wait until rising_edge(clk);
 
-		-- Check that the correct command was received
-		if w_rx_byte = x"37" then
-			report "Test Passed - Correct Byte Received" severity note;
+		if rx_byte = x"37" then
+			report "UART TB: Test Passed - Correct Byte Received";
 		else 
-			report "Test Failed - Incorrect Byte Received" severity note;
+			report "UART TB: Test Failed - Incorrect Byte Received" severity failure;
 		end if;
-
-		assert false report "Tests Complete" severity failure;
+		stop <= true;
+		wait;
 	end process;
 end architecture;
 

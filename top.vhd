@@ -99,19 +99,19 @@ begin
 		generic map(clks_per_bit => clks_per_bit)
 		port map(
 			clk => clk,
-			i_tx_dv => io_we,
-			i_tx_byte => obyte,
-			o_tx_active => bsy,
-			o_tx_serial => tx,
-			o_tx_done => open);
+			tx_we => io_we,
+			tx_byte => obyte,
+			tx_active => bsy,
+			tx_serial => tx,
+			tx_done => open);
 
 	uart_rx_0: entity work.uart_rx
 		generic map(clks_per_bit => clks_per_bit)
 		port map(
 			clk => clk,
-			i_rx_serial => rx,
+			rx_serial => rx,
 			o_rx_dv => hav,
-			o_rx_byte => ibyte);
+			rx_byte => ibyte);
 
 end architecture;
 
