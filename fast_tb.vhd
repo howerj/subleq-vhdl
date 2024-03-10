@@ -3,15 +3,14 @@
 -- Repository:  https://github.com/howerj/subleq-vhdl
 -- Email:       howe.r.j.89@gmail.com
 -- License:     MIT
--- Description: Fast (Not UART) Test bench for top level entity
---
--- N.B. Ideally this would be merged with the other test bench.
+-- Description: Test bench for top level entity
 
 library ieee, work, std;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 use work.util.all;
 use std.textio.all;
+use work.uart_pkg.all;
 
 entity fast_tb is
 end fast_tb;
@@ -19,23 +18,26 @@ end fast_tb;
 architecture testing of fast_tb is
 	constant g:                       common_generics := default_settings;
 	constant clock_period:            time     := 1000 ms / g.clock_frequency;
-	constant configuration_file_name: string := "tb.cfg";
-	constant program_file_name:       string := "subleq.dec";
+	constant baud:                    positive := 115200;
+	constant clks_per_bit:            integer  := g.clock_frequency / baud;
+	constant bit_period:              time     := clks_per_bit * clock_period;
+	constant N:                       positive := 16;
+	constant generate_uart_tbs:       boolean  := true;
+	constant configuration_file_name: string   := "tb.cfg";
+	constant program_file_name:       string   := "subleq.dec";
 	--constant program_file_name:       string := "progs/hi.dec";
 	--constant program_file_name:       string := "progs/hello.dec";
 	--constant program_file_name:       string := "progs/echo.dec";
 	--constant program_file_name:       string := "progs/hi2.dec";
-	constant N:                       positive := 16;
 
 	signal stop:   boolean    := false;
 	signal clk:    std_ulogic := '0';
 	signal halted, blocked: std_ulogic := 'X';
 	signal rst:    std_ulogic := '1';
-
 	signal saw_char: boolean := false;
 
-	signal ibyte, obyte: std_ulogic_vector(7 downto 0) := (others => '0');
-	signal io_re, io_we: std_ulogic := 'X';
+	signal tx_data, rx_data: std_ulogic_vector(7 downto 0) := (others => '0');
+	signal io_re, rx_hav: std_ulogic := 'X';
 	signal ihav, obsy: std_ulogic := '0'; 
 
 	-- Test bench configurable options --
@@ -80,10 +82,14 @@ architecture testing of fast_tb is
 	);
 
 	-- Test bench configurable options --
-
 	shared variable cfg: configurable_items := set_configuration_items(configuration_default);
 	signal configured: boolean := false;
 begin
+	uart_tbs: if generate_uart_tbs generate
+		uart_tb_0: entity work.uart_tb;
+		uart_tb_1: entity work.uart_rx_tb;
+	end generate;
+
 	uut: entity work.system
 		generic map(
 			g          => g,
@@ -95,11 +101,11 @@ begin
 			rst  => rst,
 			halted => halted,
 			blocked => blocked,
-			obyte => obyte,
-			ibyte => ibyte,
+			obyte => rx_data,
+			ibyte => tx_data,
 			obsy => obsy,
 		       	ihav => ihav,
-			io_we => io_we,
+			io_we => rx_hav,
 			io_re => io_re);
 
 	clock_process: process
@@ -138,9 +144,17 @@ begin
 		variable configuration_values: configuration_items(configuration_default'range) := configuration_default;
 	begin
 		-- write_configuration_tb(configuration_file_name, configuration_default);
+		report "CPU Size:       " & positive'image(N);
+		report "Baud:           " & positive'image(baud);
+		report "Clocks Per Bit: " & integer'image(clks_per_bit);
+		report "Bit Period:     " & time'image(bit_period);
+		report "Program:        " & program_file_name;
+		report "Config File:    " & configuration_file_name;
+
 		read_configuration_tb(configuration_file_name, configuration_values);
 		cfg := set_configuration_items(configuration_values);
 		configured <= true;
+		report "Configuration Complete";
 
 		rst <= '1';
 		wait for clock_period;
@@ -148,7 +162,7 @@ begin
 
 		configured <= true;
 		while not stop loop
-			if io_we = '1' then saw_char <= true; end if;
+			if rx_hav = '1' then saw_char <= true; end if;
 			wait for clock_period;
 		end loop;
 		if saw_char then
@@ -166,7 +180,6 @@ begin
 		variable have_char: boolean := true;
 	begin
 		wait until configured;
-		obsy <= '0'; -- never busy
 
 		if cfg.interactive < 1 then
 			report "Output process turned off (`interactive < 1`)";
@@ -175,18 +188,19 @@ begin
 
 		report "Writing to STDOUT";
 		while not stop loop
-			wait until io_we = '1' or stop;
+			wait until rx_hav = '1' or stop;
 			if not stop then
-				c := character'val(to_integer(unsigned(obyte)));
+				c := character'val(to_integer(unsigned(rx_data)));
 				if (cfg.report_uart) then
-					report "BCPU -> UART CHAR: " & integer'image(to_integer(unsigned(obyte))) & " CH: " & c;
+					report "BCPU -> UART CHAR: " & integer'image(to_integer(unsigned(rx_data))) & " CH: " & c;
 				end if;
 				write(oline, c);
 				have_char := true;
-				if obyte = x"0d" then
+				if rx_data = x"0d" then
 					writeline(output, oline);
 					have_char := false;
 				end if;
+				wait for clock_period;
 			end if;
 		end loop;
 		if have_char then
@@ -221,7 +235,7 @@ begin
 		end procedure;
 	begin
 		ihav <= '0';
-		ibyte <= x"00";
+		tx_data <= x"00";
 		wait until configured;
 
 		if cfg.interactive < 2 then
@@ -245,13 +259,13 @@ begin
 				else
 					eoi := true;
 					report "UART -> BCPU EOL/EOI: " & integer'image(character'pos(CR)) & " CR";
-					write_byte(CR, io_re, stop, ihav, ibyte);
+					write_byte(CR, io_re, stop, ihav, tx_data);
 					wait for cfg.uart_char_delay;
 					if stop then exit; end if;
 					report "UART -> BCPU EOL/EOI: " & integer'image(character'pos(LF)) & " LF";
 					c := LF;
 				end if;
-				write_byte(c, io_re, stop, ihav, ibyte);
+				write_byte(c, io_re, stop, ihav, tx_data);
 				wait for cfg.uart_char_delay;
 			end loop;
 			if cfg.input_single_line then exit; end if;

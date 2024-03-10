@@ -20,7 +20,6 @@ architecture testing of tb is
 	constant clock_period:            time     := 1000 ms / g.clock_frequency;
 	constant baud:                    positive := 115200;
 	constant clks_per_bit:            integer  := g.clock_frequency / baud;
-
 	constant bit_period:              time     := clks_per_bit * clock_period;
 	constant N:                       positive := 16;
 	constant generate_uart_tbs:       boolean  := true;
@@ -33,16 +32,13 @@ architecture testing of tb is
 
 	signal stop:   boolean    := false;
 	signal clk:    std_ulogic := '0';
-	signal halted: std_ulogic := '0';
+	signal halted, blocked: std_ulogic := 'X';
 	signal rst:    std_ulogic := '1';
 	signal saw_char: boolean := false;
 
-	-- UART
-	signal tx:      std_ulogic := '1';
-	signal tx_data: std_ulogic_vector(7 downto 0) := (others => '0');
-	signal rx:      std_ulogic := '1'; 
+	signal tx_data, rx_data: std_ulogic_vector(7 downto 0) := (others => '0');
 	signal rx_hav:  std_ulogic := '0'; 
-	signal rx_data: std_ulogic_vector(7 downto 0) := (others => '0');
+	signal tx, rx:  std_ulogic := '1';
 
 	-- Test bench configurable options --
 
@@ -105,6 +101,7 @@ begin
 			clk  => clk,
 --			rst  => rst,
 			halted => halted,
+			blocked => blocked,
 			tx   => rx,
 			rx   => tx);
 
@@ -126,7 +123,7 @@ begin
 		-- N.B. We could add clock jitter if we wanted, however we would
 		-- probably also want to add it to each of the modules clocks, along
 		-- with an adjustable delay.
-		while (count < cfg.clocks or cfg.forever)  and halted = '0' loop
+		while (count < cfg.clocks or cfg.forever) and halted = '0' loop
 			clk <= '1';
 			wait for clock_period / 2;
 			clk <= '0';
@@ -196,7 +193,7 @@ begin
 
 		report "Writing to STDOUT";
 		while not stop loop
-			wait until (rx_hav = '1' or stop);
+			wait until rx_hav = '1' or stop;
 			if not stop then
 				c := character'val(to_integer(unsigned(rx_data)));
 				if (cfg.report_uart) then
@@ -251,8 +248,7 @@ begin
 				else
 					eoi := true;
 					report "UART -> BCPU EOL/EOI: " & integer'image(character'pos(CR)) & " CR";
-					c := CR;
-					uart_write_byte(baud, std_ulogic_vector(to_unsigned(character'pos(c), tx_data'length)), tx);
+					uart_write_byte(baud, std_ulogic_vector(to_unsigned(character'pos(CR), tx_data'length)), tx);
 					wait for cfg.uart_char_delay;
 					if stop then exit; end if;
 					report "UART -> BCPU EOL/EOI: " & integer'image(character'pos(LF)) & " LF";
@@ -267,5 +263,3 @@ begin
 		wait;
 	end process;
 end architecture;
-
-  
