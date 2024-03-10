@@ -197,6 +197,78 @@ entity single_port_block_ram is
 		dout: out std_ulogic_vector(data_length - 1 downto 0) := (others => '0'));
 end entity;
 
+-- The function `initialize_ram` does what it says, it initializes a Block RAM from a file, which
+-- is read off of disk. Unfortunately this version does not synthesize in Xilinx ISE 14.7 (and likely
+-- never will) because of an indefinite loop, failing with the error "Non-static loop limit exceeded".
+--
+-- This is a shame as this version is more flexible in what it can handle.
+--
+-- The function allows multiple file types to be used to initialize the RAM:
+--
+-- * FILE_HEX; A file containing hexadecimal values, one per line.
+-- * FILE_BINARY; A file containing binary values, one per line.
+-- * FILE_DECIMAL; A file consisting of signed decimal values, one per line.
+-- * FILE_NONE; No file, all RAM contents will be initialized to 0.
+--
+-- ----------------------------------------------------------------------------------------------------------
+--
+-- impure function initialize_ram(the_file_name: in string; the_file_type: in file_format) return ram_type is
+-- 	variable ram_data:   ram_type;
+-- 	file     in_file:    text is in the_file_name;
+-- 	variable input_line: line;
+-- 	variable tmp:        bit_vector(data_length - 1 downto 0);
+-- 	variable int:        integer;
+-- 	variable i:          integer;
+-- 	variable good:       boolean;
+-- 	variable c:          character;
+-- 	variable slv:        std_ulogic_vector(data_length - 1 downto 0);
+-- begin
+-- 	i := 0;
+-- 	while i < ram_size loop
+-- 		if the_file_type = FILE_NONE then
+-- 			ram_data(i) := (others => '0');
+-- 			i := i + 1;
+-- 		elsif not endfile(in_file) then
+-- 			readline(in_file,input_line);
+-- 			if the_file_type = FILE_BINARY then
+-- 				read(input_line, tmp);
+-- 				ram_data(i) := std_ulogic_vector(to_stdlogicvector(tmp));
+-- 				i := i + 1;
+-- 			elsif the_file_type = FILE_DECIMAL then
+-- 				good := true;
+-- 				while good and i < ram_size loop
+-- 					read(input_line, int, good);
+-- 					if good then
+-- 						if int < 0 then
+-- 							int := (2**data_length) + int;
+-- 						end if;
+-- 						assert int < (2**data_length) and int >= 0 severity failure;
+-- 						ram_data(i) := std_ulogic_vector(to_unsigned(int, tmp'length));
+-- 						i := i + 1;
+-- 					end if;
+-- 				end loop;
+-- 			elsif the_file_type = FILE_HEX then -- hexadecimal
+-- 				assert (data_length mod 4) = 0 report "(data_length%4)!=0" severity failure;
+-- 				for j in 1 to (data_length/4) loop
+-- 					c:= input_line((data_length/4) - j + 1);
+-- 					slv((j*4)-1 downto (j*4)-4) := hex_char_to_std_ulogic_vector_tb(c);
+-- 				end loop;
+-- 				ram_data(i) := slv;
+-- 				i := i + 1;
+-- 			else
+-- 				report "Incorrect file type given: " & file_format'image(the_file_type) severity failure;
+-- 			end if;
+-- 		else
+-- 			ram_data(i) := (others => '0');
+-- 			i := i + 1;
+-- 		end if;
+-- 	end loop;
+-- 	file_close(in_file);
+-- 	return ram_data;
+-- end function;
+--
+-- ----------------------------------------------------------------------------------------------------------
+
 architecture behav of single_port_block_ram is
 	constant ram_size: positive := 2 ** addr_length;
 
@@ -213,7 +285,7 @@ architecture behav of single_port_block_ram is
 	begin
 		for i in 0 to ram_size - 1 loop
 			if the_file_type = FILE_NONE then
-				ram_data(i):=(others => '0');
+				ram_data(i) := (others => '0');
 			elsif not endfile(in_file) then
 				readline(in_file,input_line);
 				if the_file_type = FILE_BINARY then
@@ -222,15 +294,15 @@ architecture behav of single_port_block_ram is
 				elsif the_file_type = FILE_DECIMAL then
 					read(input_line, int);
 					if int < 0 then
-						int := (2**data_length) + int;
+						int := (2 ** data_length) + int;
 					end if;
-					assert int < (2**data_length) and int >= 0 severity failure;
+					assert int < (2 ** data_length) and int >= 0 severity failure;
 					ram_data(i) := std_ulogic_vector(to_unsigned(int, tmp'length));
 				elsif the_file_type = FILE_HEX then -- hexadecimal
-					assert (data_length mod 4) = 0 report "(data_length%4)!=0" severity failure;
-					for j in 1 to (data_length/4) loop
-						c:= input_line((data_length/4) - j + 1);
-						slv((j*4)-1 downto (j*4)-4) := hex_char_to_std_ulogic_vector_tb(c);
+					assert (data_length mod 4) = 0 report "(data_length % 4) != 0" severity failure;
+					for j in 1 to (data_length / 4) loop
+						c:= input_line((data_length / 4) - j + 1);
+						slv((j * 4) - 1 downto (j * 4) - 4) := hex_char_to_std_ulogic_vector_tb(c);
 					end loop;
 					ram_data(i) := slv;
 				else
@@ -245,7 +317,6 @@ architecture behav of single_port_block_ram is
 	end function;
 
 	shared variable ram: ram_type := initialize_ram(file_name, file_type);
-
 begin
 	block_ram: process(clk)
 	begin
@@ -262,5 +333,3 @@ begin
 		end if;
 	end process;
 end architecture;
-
-

@@ -46,8 +46,8 @@ Note that this project, unlike many other SUBLEQ CPUs written for
 FPGAs in *whatever hardware description language* implements the full machine
 without any *weird differences*, includes Input/Output, and halting. It
 even reads the "standard" format used to describe SUBLEQ programs which
-consists of spaced delimited ASCII signed decimal values (currently 
-only one value is allowed per line, many SUBLEQ programs are stored all
+consists of spaced delimited ASCII signed decimal values (currently                                                                    
+only one value is allowed per line, many SUBLEQ programs are stored all                                                                
 on one line with only spaces as separators).
 
 Weird/"non-standard" things include:
@@ -250,21 +250,23 @@ can be pasted into [GraphvizOnline][].
   * [x] Merge new module into main system.
 * [ ] Get implementation working in hardware (need an FPGA board for this)
 * [ ] Improve the SUBLEQ Core and system
-  * [ ] Find way of interacting with other hardware
   * [x] Currently there is no way for the SUBLEQ core to signal that it
         is waiting on I/O. A `paused` line when either the `pause` line
         is asserted, or when we are waiting for input or output would
         suffice (we can determine why from other signals).
-  * [ ] Optimize SUBLEQ design for slice area (and speed if possible)
   * [x] Instead of loading hexadecimal files, load the original signed decimal 
         files, this would simplify the build process and allow `hex.c` to be
         removed.
-    * [ ] Allow multiple numbers per line.
-  * [ ] Use the UART from Nandland instead of my own, it appears to be smaller
-        and simpler (which would aid in simulation).
-  * [ ] Hook up `blocked` and `halted` to an LED?
-  * [ ] Optionally generate the UART test benches in the top level component
+    * [x] Allow multiple numbers per line (NOTE: Solution does not synthesize,
+          so it has been commented out).
+  * [x] Use the UART from [Nandland](https://nandland.com/) instead of my own, 
+        it appears to be smaller and simpler (which would aid in simulation).
+        It is also MIT licensed (or the version I have is).
+  * [x] Optionally generate the UART test benches in the top level component
         as well as directly intefacing with `system.vhd` (again, optionally)
+  * [ ] Find way of interacting with other hardware
+  * [ ] Optimize SUBLEQ design for slice area (and speed if possible)
+  * [ ] Hook up `blocked` and `halted` to an LED?
 * [x] Using Graphviz online, make a state-machine diagram
 * [x] Make a block diagram of the system
 * [x] Use ttygif/ttyrec to record a terminal session showing the simulation, synthesis
