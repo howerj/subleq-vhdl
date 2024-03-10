@@ -23,7 +23,7 @@ architecture testing of tb is
 
 	constant bit_period:              time     := clks_per_bit * clock_period;
 	constant N:                       positive := 16;
-	constant generate_uart_tbs:       boolean  := true;
+	constant generate_uart_tbs:       boolean  := false;
 	constant configuration_file_name: string   := "tb.cfg";
 	constant program_file_name:       string   := "subleq.dec";
 	--constant program_file_name:       string := "progs/hi.dec";

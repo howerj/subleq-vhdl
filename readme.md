@@ -243,6 +243,10 @@ can be pasted into [GraphvizOnline][].
 * Improve test bench
   * [x] Add more run time configuration options
   * [x] Add a UART that can print to STDOUT and read from STDIN (or a FILE)
+* [x] Using Graphviz online, make a state-machine diagram
+* [x] Make a block diagram of the system
+* [x] Use ttygif/ttyrec to record a terminal session showing the simulation, synthesis
+      and running the C simulator.
 * [x] Make cut-down and special SUBLEQ eForth image for the smaller (16KiB) BRAM
 * [ ] Make one big VHDL file containing an initial Forth image and place it in `subleq.vhd`?
   * [x] Add a component that combines the Block RAM and SUBLEQ into one along
@@ -267,10 +271,6 @@ can be pasted into [GraphvizOnline][].
   * [ ] Find way of interacting with other hardware
   * [ ] Optimize SUBLEQ design for slice area (and speed if possible)
   * [ ] Hook up `blocked` and `halted` to an LED?
-* [x] Using Graphviz online, make a state-machine diagram
-* [x] Make a block diagram of the system
-* [x] Use ttygif/ttyrec to record a terminal session showing the simulation, synthesis
-      and running the C simulator.
 
 ## Other SUBLEQ projects
 
