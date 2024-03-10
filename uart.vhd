@@ -4,9 +4,10 @@
 -- REPO:    <https://github.com/howerj/subleq-vhdl>
 --
 -- Taken from <https://github.com/nandland/UART>, commit
--- 4ae04682b0e59f4b9d93a4f99b06990e5bcb5cc2, it is MIT licensed, and 
--- is smaller (and less featureful) than the UART I made at
--- <https://github.com/howerj/forth-cpu>. The original copyright
+-- 4ae04682b0e59f4b9d93a4f99b06990e5bcb5cc2, it is MIT licensed as are
+-- the changes, and  is smaller (and less featureful) than the UART I made at
+-- <https://github.com/howerj/forth-cpu>. There are significant changes,
+-- which make the UART easier to use and integrate. The original copyright
 -- notice is:
 --
 -- -------------------------------------------------------------------------------
@@ -44,16 +45,16 @@ use ieee.numeric_std.all;
 
 package uart_pkg is
 	component uart_rx is
-		generic (clks_per_bit: integer := 217; N: positive := 8);
+		generic (clks_per_bit: integer := 868; N: positive := 8);
 		port (
-			clk:          in  std_ulogic;
-			rx_serial:  in  std_ulogic;
-			o_rx_dv:     out std_ulogic;
-			rx_byte:   out std_ulogic_vector(N - 1 downto 0));
+			clk:           in std_ulogic;
+			rx_serial:     in std_ulogic;
+			rx_have_data: out std_ulogic; -- high for only one clock cycle
+			rx_byte:      out std_ulogic_vector(N - 1 downto 0));
 	end component;
 
 	component uart_tx is
-		generic (clks_per_bit: integer := 217; N: positive := 8);
+		generic (clks_per_bit: integer := 868; N: positive := 8);
 		port (
 			clk:        in  std_ulogic;
 			tx_we:      in  std_ulogic;
@@ -69,22 +70,31 @@ package uart_pkg is
 	component uart_tb is
 	end component;
 
+	pure function calc_clks_per_bit(clock_frequency: positive; baud: positive) return integer;
+
+	-- TODO: Rewrite to accept baud
 	procedure uart_write_byte( -- Simulation only
-		bit_period: in time; -- 8680 ns for 115200
-		data_input_byte: in std_ulogic_vector(7 downto 0);
+		baud: in positive;
+		data_input_byte: in std_ulogic_vector;
 		signal tx_line: out std_ulogic);
 end package;
 
 package body uart_pkg is
+	pure function calc_clks_per_bit(clock_frequency: positive; baud: positive) return integer is
+	begin
+		return clock_frequency / baud;
+	end function;
+
 	procedure uart_write_byte(
-		bit_period: in time; -- 8680 ns for 115200
-		data_input_byte: in std_ulogic_vector(7 downto 0);
+		baud: in positive;
+		data_input_byte: in std_ulogic_vector;
 		signal tx_line: out std_ulogic) is -- Make sure to set to '1' during signal declaration.
+		constant bit_period: time := 1000 ms / baud;
 	begin -- Test Bench Low Level UART Write byte (pretty neat) 8N1 format only
 		tx_line <= '0'; -- Send Start Bit
 		wait for bit_period;
 		
-		for i in 0 to data_input_byte'high loop -- Send Data Byte
+		for i in data_input_byte'high downto 0 loop -- Send Data Byte
 			tx_line <= data_input_byte(i);
 			wait for bit_period;
 		end loop;
@@ -96,7 +106,7 @@ end;
 
 -- This file contains the UART Receiver.  This receiver is able to
 -- receive 8 bits of serial data, one start bit, one stop bit,
--- and no parity bit.  When receive is complete o_rx_dv will be
+-- and no parity bit.  When receive is complete `rx_have_data` will be
 -- driven high for one clock cycle.
 -- 
 -- Set Generic clks_per_bit as follows:
@@ -105,26 +115,26 @@ end;
 -- (25000000)/(115200) = 217
 --
 library ieee;
-use ieee.std_logic_1164.ALL;
+use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 use work.uart_pkg.all;
 
 entity uart_rx is
-	generic (clks_per_bit: integer := 217; N: positive := 8);
+	generic (clks_per_bit: integer := 868; N: positive := 8);
 	port (
-		clk: in std_ulogic;
-		rx_serial: in std_ulogic;
-		o_rx_dv: out std_ulogic;
-		rx_byte: out std_ulogic_vector(N - 1 downto 0));
+		clk:           in std_ulogic;
+		rx_serial:     in std_ulogic;
+		rx_have_data: out std_ulogic; -- High for only one clock cycle
+		rx_byte:      out std_ulogic_vector(N - 1 downto 0));
 end entity;
 
 architecture rtl of uart_rx is
 	type state_t is (s_idle, s_rx_start_bit, s_rx_data_bits, s_rx_stop_bit, s_cleanup);
 	signal state: state_t := s_idle;
-	signal r_clk_count: integer range 0 to clks_per_bit - 1 := 0;
-	signal bit_index:   integer range 0 to N - 1 := 0;
-	signal r_rx_byte:   std_ulogic_vector(rx_byte'range) := (others => '0');
-	signal r_rx_dv:     std_ulogic := '0';
+	signal clk_count: integer range 0 to clks_per_bit - 1 := 0;
+	signal bit_index: integer range 0 to N - 1 := 0;
+	signal r_rx_byte: std_ulogic_vector(rx_byte'range) := (others => '0');
+	signal r_rx_dv:   std_ulogic := '0';
 begin
 	process (clk)
 	begin
@@ -132,7 +142,7 @@ begin
 			case state is
 			when s_Idle =>
 				r_rx_dv <= '0';
-				r_clk_count <= 0;
+				clk_count <= 0;
 				bit_index <= 0;
 				if rx_serial = '0' then -- Start bit detected
 					state <= s_rx_start_bit;
@@ -140,27 +150,27 @@ begin
 					state <= s_idle;
 				end if;
 			when s_RX_Start_Bit => -- Check middle of start bit to make sure it's still low
-				if r_clk_count = (clks_per_bit - 1) / 2 then
+				if clk_count = (clks_per_bit - 1) / 2 then
 					if rx_serial = '0' then
-						r_clk_count <= 0; -- reset counter since we found the middle
+						clk_count <= 0; -- reset counter since we found the middle
 						state <= s_rx_data_bits;
 					else
 						state <= s_idle;
 					end if;
 				else
-					r_clk_count <= r_clk_count + 1;
+					clk_count <= clk_count + 1;
 					state <= s_rx_start_bit;
 				end if;
 			when s_rx_data_bits => -- Wait clks_per_bit - 1 clock cycles to sample serial data
-				if r_clk_count < clks_per_bit - 1 then
-					r_clk_count <= r_clk_count + 1;
+				if clk_count < (clks_per_bit - 1) then
+					clk_count <= clk_count + 1;
 					state <= s_rx_data_bits;
 				else
-					r_clk_count <= 0;
+					clk_count <= 0;
 					r_rx_byte(bit_index) <= rx_serial;
 					
 					-- Check if we have sent out all bits
-					if bit_index < 7 then
+					if bit_index < (N - 1) then
 						bit_index <= bit_index + 1;
 						state <= s_rx_data_bits;
 					else
@@ -170,12 +180,12 @@ begin
 				end if;
 			when s_rx_stop_bit => -- Receive Stop bit. Stop bit = 1
 				-- Wait clks_per_bit - 1 clock cycles for Stop bit to finish
-				if r_clk_count < clks_per_bit - 1 then
-					r_clk_count <= r_clk_count + 1;
+				if clk_count < (clks_per_bit - 1) then
+					clk_count <= clk_count + 1;
 					state <= s_rx_stop_bit;
 				else
 					r_rx_dv <= '1';
-					r_clk_count <= 0;
+					clk_count <= 0;
 					state <= s_cleanup;
 				end if;
 			when s_cleanup => -- Stay here 1 clock
@@ -187,7 +197,7 @@ begin
 		end if;
 	end process;
 
-	o_rx_dv <= r_rx_dv;
+	rx_have_data <= r_rx_dv;
 	rx_byte <= r_rx_byte;
 end RTL;
 
@@ -207,7 +217,7 @@ use ieee.numeric_std.all;
 use work.uart_pkg.all;
 
 entity uart_tx is
-	generic (clks_per_bit: integer := 217; N: positive := 8);
+	generic (clks_per_bit: integer := 868; N: positive := 8);
 	port (
 		clk:        in std_ulogic;
 		tx_we:      in std_ulogic;
@@ -221,7 +231,7 @@ architecture rtl of uart_tx is
 	type state_t is (idle, tx_start_bit, tx_data_bits, tx_stop_bit, cleanup);
 	signal state: state_t := idle;
 
-	signal r_clk_count: integer range 0 to clks_per_bit - 1 := 0;
+	signal clk_count: integer range 0 to clks_per_bit - 1 := 0;
 	signal bit_index: integer range 0 to tx_byte'high := 0;
 	signal r_tx_data: std_ulogic_vector(tx_byte'range) := (others => '0');
 	signal r_tx_done: std_ulogic := '0';
@@ -234,7 +244,7 @@ begin
 			when idle =>
 				tx_active <= '0';
 				tx_serial <= '1'; -- Drive Line High for Idle
-				r_clk_count <= 0;
+				clk_count <= 0;
 				bit_index <= 0;
 
 				if tx_we = '1' then
@@ -248,21 +258,21 @@ begin
 				tx_serial <= '0';
 
 				-- Wait clks_per_bit - 1 clock cycles for start bit to finish
-				if r_clk_count < clks_per_bit - 1 then
-					r_clk_count <= r_clk_count + 1;
+				if clk_count < (clks_per_bit - 1) then
+					clk_count <= clk_count + 1;
 					state <= tx_start_bit;
 				else
-					r_clk_count <= 0;
+					clk_count <= 0;
 					state <= tx_data_bits;
 				end if;
 			when tx_data_bits => -- Wait clks_per_bit - 1 clock cycles for data bits to finish
 				tx_serial <= r_tx_data(bit_index);
 				
-				if r_clk_count < clks_per_bit - 1 then
-					r_clk_count <= r_clk_count + 1;
+				if clk_count < (clks_per_bit - 1) then
+					clk_count <= clk_count + 1;
 					state <= tx_data_bits;
 				else
-					r_clk_count <= 0;
+					clk_count <= 0;
 					
 					-- Check if we have sent out all bits
 					if bit_index < tx_byte'high then
@@ -277,12 +287,12 @@ begin
 				tx_serial <= '1';
 
 				-- Wait clks_per_bit - 1 clock cycles for Stop bit to finish
-				if r_clk_count < clks_per_bit - 1 then
-					r_clk_count <= r_clk_count + 1;
+				if clk_count < (clks_per_bit - 1) then
+					clk_count <= clk_count + 1;
 					state <= tx_stop_bit;
 				else
 					r_tx_done <= '1';
-					r_clk_count <= 0;
+					clk_count <= 0;
 					state <= cleanup;
 				end if;
 			when cleanup => -- Stay here 1 clock
@@ -311,20 +321,19 @@ architecture testing of uart_rx_tb is
 	constant clock_period:    time     := 1000 ms / clock_frequency;
 	constant baud:            positive := 115200;
 	constant clks_per_bit:    integer  := clock_frequency / baud;
-	constant bit_period:      time     := clks_per_bit * clock_period;
 
-	signal clk: std_ulogic := '0';
-	signal rx_byte: std_ulogic_vector(7 downto 0);
+	signal clk:       std_ulogic := '0';
+	signal rx_byte:   std_ulogic_vector(7 downto 0) := (others => 'U');
 	signal rx_serial: std_ulogic := '1';
-	signal stop: boolean := false;
+	signal stop:      boolean    := false;
 begin
 	uart_rx_inst: entity work.uart_rx
 		generic map (clks_per_bit => clks_per_bit)
 		port map (
-			clk => clk,
-			rx_serial => rx_serial,
-			o_rx_dv => open,
-			rx_byte => rx_byte);
+			clk          => clk,
+			rx_serial    => rx_serial,
+			rx_have_data => open,
+			rx_byte      => rx_byte);
 
 	clock_process: process
 	begin
@@ -339,7 +348,7 @@ begin
 	process is
 	begin
 		wait until rising_edge(clk);
-		uart_write_byte(bit_period, x"3F", rx_serial);
+		uart_write_byte(baud, x"3F", rx_serial);
 		wait until rising_edge(clk);
 
 		if rx_byte = x"3F" then
@@ -367,7 +376,6 @@ architecture testing of uart_tb is
 	constant clock_period:    time     := 1000 ms / clock_frequency;
 	constant baud:            positive := 115200;
 	constant clks_per_bit:    integer  := clock_frequency / baud;
-	constant bit_period:      time     := clks_per_bit * clock_period;
 	
 	signal clk: std_ulogic := '0';
 	signal tx_dv: std_ulogic := '0';
@@ -381,20 +389,20 @@ begin
 	uart_tx_inst: entity work.uart_tx
 		generic map (clks_per_bit => clks_per_bit)
 		port map (
-			clk => clk,
-			tx_we => tx_dv,
-			tx_byte => tx_byte,
+			clk       => clk,
+			tx_we     => tx_dv,
+			tx_byte   => tx_byte,
 			tx_active => open,
 			tx_serial => tx_serial,
-			tx_done => tx_done);
+			tx_done   => tx_done);
 
 	uart_rx_inst: entity work.uart_rx
 		generic map (clks_per_bit => clks_per_bit)
 		port map (
-			clk => clk,
-			rx_serial => rx_serial,
-			o_rx_dv => rx_dv,
-			rx_byte => rx_byte);
+			clk          => clk,
+			rx_serial    => rx_serial,
+			rx_have_data => rx_dv,
+			rx_byte      => rx_byte);
 
 	clock_process: process
 	begin
@@ -418,7 +426,7 @@ begin
 		wait until tx_done = '1';
 
 		wait until rising_edge(clk);
-		uart_write_byte(bit_period, x"37", rx_serial);
+		uart_write_byte(baud, x"37", rx_serial);
 		wait until rising_edge(clk);
 
 		if rx_byte = x"37" then

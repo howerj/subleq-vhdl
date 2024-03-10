@@ -4,11 +4,15 @@
 -- Email:       howe.r.j.89@gmail.com
 -- License:     MIT
 -- Description: Top level entity; SUBLEQ CPU
+--
+-- This module brings together the SUBLEQ CPU/Memory subsystem with
+-- the I/O, which is a UART.
 
 library ieee, work, std;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 use work.util.all;
+use work.uart_pkg.all;
 
 entity top is
 	generic (
@@ -32,11 +36,11 @@ entity top is
 end entity;
 
 architecture rtl of top is
-	constant data_length: positive := N;
-	constant W:           positive := N - 3;
-	constant addr_length: positive := W;
-	constant clks_per_bit: integer := g.clock_frequency / baud;
-	constant delay:       time     := g.delay;
+	constant data_length:  positive := N;
+	constant W:            positive := N - 3;
+	constant addr_length:  positive := W;
+	constant clks_per_bit: integer  := calc_clks_per_bit(g.clock_frequency, baud);
+	constant delay:        time     := g.delay;
 
 	signal rst:        std_ulogic := '0';
 	signal i, o, a:    std_ulogic_vector(N - 1 downto 0) := (others => 'U');
@@ -110,7 +114,7 @@ begin
 		port map(
 			clk => clk,
 			rx_serial => rx,
-			o_rx_dv => hav,
+			rx_have_data => hav,
 			rx_byte => ibyte);
 
 end architecture;

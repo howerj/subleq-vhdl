@@ -20,9 +20,10 @@ architecture testing of tb is
 	constant clock_period:            time     := 1000 ms / g.clock_frequency;
 	constant baud:                    positive := 115200;
 	constant clks_per_bit:            integer  := g.clock_frequency / baud;
+
 	constant bit_period:              time     := clks_per_bit * clock_period;
 	constant N:                       positive := 16;
-	constant generate_uart_tbs:       boolean  := false;
+	constant generate_uart_tbs:       boolean  := true;
 	constant configuration_file_name: string   := "tb.cfg";
 	constant program_file_name:       string   := "subleq.dec";
 	--constant program_file_name:       string := "progs/hi.dec";
@@ -88,7 +89,6 @@ architecture testing of tb is
 	shared variable cfg: configurable_items := set_configuration_items(configuration_default);
 	signal configured: boolean := false;
 begin
-
 	uart_tbs: if generate_uart_tbs generate
 		uart_tb_0: entity work.uart_tb;
 		uart_tb_1: entity work.uart_rx_tb;
@@ -111,10 +111,10 @@ begin
 	uart_rx_0: entity work.uart_rx
 		generic map(clks_per_bit => clks_per_bit)
 		port map(
-			clk       => clk,
-			rx_serial => rx,
-			o_rx_dv   => rx_hav,
-			rx_byte   => rx_data);
+			clk          => clk,
+			rx_serial    => rx,
+			rx_have_data => rx_hav,
+			rx_byte      => rx_data);
 
 	clock_process: process
 		variable count: integer := 0;
@@ -252,13 +252,13 @@ begin
 					eoi := true;
 					report "UART -> BCPU EOL/EOI: " & integer'image(character'pos(CR)) & " CR";
 					c := CR;
-					uart_write_byte(bit_period, std_ulogic_vector(to_unsigned(character'pos(c), tx_data'length)), tx);
+					uart_write_byte(baud, std_ulogic_vector(to_unsigned(character'pos(c), tx_data'length)), tx);
 					wait for cfg.uart_char_delay;
 					if stop then exit; end if;
 					report "UART -> BCPU EOL/EOI: " & integer'image(character'pos(LF)) & " LF";
 					c := LF;
 				end if;
-				uart_write_byte(bit_period, std_ulogic_vector(to_unsigned(character'pos(c), tx_data'length)), tx);
+				uart_write_byte(baud, std_ulogic_vector(to_unsigned(character'pos(c), tx_data'length)), tx);
 				wait for cfg.uart_char_delay;
 			end loop;
 			if cfg.input_single_line then exit; end if;
