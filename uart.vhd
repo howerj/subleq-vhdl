@@ -72,10 +72,9 @@ package uart_pkg is
 
 	pure function calc_clks_per_bit(clock_frequency: positive; baud: positive) return integer;
 
-	-- TODO: Rewrite to accept baud
 	procedure uart_write_byte( -- Simulation only
 		baud: in positive;
-		data_input_byte: in std_ulogic_vector;
+		data_input_byte: in std_ulogic_vector(7 downto 0);
 		signal tx_line: out std_ulogic);
 end package;
 
@@ -87,14 +86,14 @@ package body uart_pkg is
 
 	procedure uart_write_byte(
 		baud: in positive;
-		data_input_byte: in std_ulogic_vector;
+		data_input_byte: in std_ulogic_vector(7 downto 0);
 		signal tx_line: out std_ulogic) is -- Make sure to set to '1' during signal declaration.
 		constant bit_period: time := 1000 ms / baud;
 	begin -- Test Bench Low Level UART Write byte (pretty neat) 8N1 format only
 		tx_line <= '0'; -- Send Start Bit
 		wait for bit_period;
 		
-		for i in data_input_byte'high downto 0 loop -- Send Data Byte
+		for i in 0 to data_input_byte'high loop -- Send Data Byte
 			tx_line <= data_input_byte(i);
 			wait for bit_period;
 		end loop;
@@ -140,7 +139,7 @@ begin
 	begin
 		if rising_edge(clk) then
 			case state is
-			when s_Idle =>
+			when s_idle =>
 				r_rx_dv <= '0';
 				clk_count <= 0;
 				bit_index <= 0;
@@ -149,7 +148,7 @@ begin
 				else
 					state <= s_idle;
 				end if;
-			when s_RX_Start_Bit => -- Check middle of start bit to make sure it's still low
+			when s_rx_start_bit => -- Check middle of start bit to make sure it's still low
 				if clk_count = (clks_per_bit - 1) / 2 then
 					if rx_serial = '0' then
 						clk_count <= 0; -- reset counter since we found the middle
@@ -317,7 +316,7 @@ entity uart_rx_tb is
 end uart_rx_tb;
 
 architecture testing of uart_rx_tb is
-	constant clock_frequency: positive := 25_000_000;
+	constant clock_frequency: positive := 100_000_000;
 	constant clock_period:    time     := 1000 ms / clock_frequency;
 	constant baud:            positive := 115200;
 	constant clks_per_bit:    integer  := clock_frequency / baud;
@@ -372,7 +371,7 @@ entity uart_tb is
 end uart_tb;
 
 architecture testing of uart_tb is
-	constant clock_frequency: positive := 25_000_000;
+	constant clock_frequency: positive := 100_000_000;
 	constant clock_period:    time     := 1000 ms / clock_frequency;
 	constant baud:            positive := 115200;
 	constant clks_per_bit:    integer  := clock_frequency / baud;
