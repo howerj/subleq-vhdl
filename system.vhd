@@ -21,6 +21,7 @@ library ieee, work, std;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 use work.util.all;
+use std.textio.all; -- Used for debug only (turned off for synthesis)
 
 entity system is
 	generic (
@@ -48,7 +49,40 @@ architecture rtl of system is
 
 	signal i, o, a: std_ulogic_vector(N - 1 downto 0) := (others => 'U');
 	signal re, we:  std_ulogic := 'U';
+
+	procedure print_debug_info is -- Not synthesize-able, hence synthesis turned off
+		variable oline: line;
+		function int(slv: in std_ulogic_vector) return string is
+		begin
+			return integer'image(to_integer(signed(slv)));
+		end function;
+
+		function yn(sl: std_ulogic) return character is
+		begin
+			if sl = '1' then return 'Y'; end if;
+			return 'N';
+		end function;
+	begin
+		-- synthesis translate_off
+		if debug = 1 then
+			write(oline, "a:" & int(a) & " ");
+			write(oline, "i:" & int(i) & " ");
+			write(oline, "o:" & int(o) & " ");
+			write(oline, "re:" & yn(re) & " ");
+			write(oline, "we:" & yn(we) & " ");
+			writeline(OUTPUT, oline);
+		end if;
+		-- synthesis translate_on
+	end procedure;
 begin
+	-- synthesis translate_off
+	process (clk) begin
+		if rising_edge(clk) then
+			print_debug_info;
+		end if;
+	end process;
+	-- synthesis translate_on
+
 	cpu: entity work.subleq
 		generic map (
 			asynchronous_reset => g.asynchronous_reset,

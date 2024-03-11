@@ -42,7 +42,7 @@
 library ieee, work, std;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-use std.textio.all;
+use std.textio.all; -- Used for debug only (turned off for synthesis)
 
 entity subleq is
 	generic (
@@ -112,37 +112,25 @@ architecture rtl of subleq is
 	-- though, we will be able to see which instructions are executed and do so
 	-- by name.
 	procedure print_debug_info is
-		variable ll: line;
-
-		function hx(slv: in std_ulogic_vector) return string is -- std_ulogic_vector to hex string
-			constant cv: string := "0123456789ABCDEF";
-			constant qu: integer := slv'length   / 4;
-			constant rm: integer := slv'length mod 4;
-			variable rs: string(1 to qu);
-			variable sl: std_ulogic_vector(3 downto 0);
+		variable oline: line;
+		function int(slv: in std_ulogic_vector) return string is
 		begin
-			assert rm = 0 severity failure;
-			for l in 0 to qu - 1 loop
-				sl := slv((l * 4) + 3 downto (l * 4));
-				rs(qu - l) := cv(to_integer(unsigned(sl)) + 1);
-			end loop;
-			return rs;
+			return integer'image(to_integer(signed(slv)));
 		end function;
 	begin
 		-- synthesis translate_off
-		if debug > 0 then
-			write(ll, hx(c.pc)  & ": ");
-			write(ll, state_t'image(c.state) & HT);
-			write(ll, hx(c.b)   & " ");
-			write(ll, hx(c.c)   & " ");
-			write(ll, hx(c.la)  & " ");
-			write(ll, hx(c.lb)  & " ");
-			writeline(OUTPUT, ll);
-			if debug > 1 then
-				write(ll, state_t'image(c.state) & " => ");
-				write(ll, state_t'image(f.state));
-				writeline(OUTPUT, ll);
+		if debug >= 2 then
+			write(oline, int(c.pc)  & ": ");
+			write(oline, state_t'image(c.state) & HT);
+			write(oline, int(c.b)   & " ");
+			write(oline, int(c.c)   & " ");
+			write(oline, int(c.la)  & " ");
+			write(oline, int(c.lb)  & " ");
+			if debug >= 3 and c.state /= f.state then
+				write(oline, state_t'image(c.state) & " => ");
+				write(oline, state_t'image(f.state));
 			end if;
+			writeline(OUTPUT, oline);
 		end if;
 		-- synthesis translate_on
 	end procedure;

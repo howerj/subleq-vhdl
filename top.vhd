@@ -42,15 +42,15 @@ architecture rtl of top is
 	constant clks_per_bit: integer  := calc_clks_per_bit(g.clock_frequency, baud);
 	constant delay:        time     := g.delay;
 
-	signal rst:        std_ulogic := '0';
-	signal i, o, a:    std_ulogic_vector(N - 1 downto 0) := (others => 'U');
-	signal bsy, hav, re, we, io_re, io_we: std_ulogic := 'U';
+	signal rst: std_ulogic := '0';
+	signal bsy, hav, io_re, io_we: std_ulogic := 'U';
 	signal obyte, ibyte: std_ulogic_vector(7 downto 0) := (others => 'U');
 
 	signal c_hav, n_hav: std_ulogic := '0';
 	signal c_ibyte, n_ibyte: std_ulogic_vector(7 downto 0) := (others => '0');
+
 begin
-	process (clk, rst) begin
+	process (clk, rst) begin -- N.B. We could use register components for this
 		if rst = '1' and g.asynchronous_reset then
 			c_hav <= '0';
 			c_ibyte <= (others => '0');
@@ -100,7 +100,7 @@ begin
 		io_re   => io_re);
 
 	uart_tx_0: entity work.uart_tx
-		generic map(clks_per_bit => clks_per_bit)
+		generic map(clks_per_bit => clks_per_bit, delay => delay)
 		port map(
 			clk => clk,
 			tx_we => io_we,
@@ -110,7 +110,7 @@ begin
 			tx_done => open);
 
 	uart_rx_0: entity work.uart_rx
-		generic map(clks_per_bit => clks_per_bit)
+		generic map(clks_per_bit => clks_per_bit, delay => delay)
 		port map(
 			clk => clk,
 			rx_serial => rx,

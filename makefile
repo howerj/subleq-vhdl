@@ -10,7 +10,7 @@ IMAGE=subleq
 
 .PHONY: all run diff simulation viewer clean documentation synthesis implementation bitfile
 
-.PRECIOUS: tb.ghw fast_tb.ghw
+.PRECIOUS: tb.ghw
 
 all: subleq simulation
 
@@ -49,12 +49,6 @@ tb: tb.an top.an
 
 system.an: system.vhd subleq.an util.an
 
-fast_tb.an: util.an system.an subleq.an
-
-fast_tb: fast_tb.an subleq.an system.an util.an
-	${GHDL} -e $@
-	touch $@
-
 gforth.dec: eforth.txt
 	gforth $< > $@
 
@@ -62,11 +56,7 @@ gforth: subleq gforth.dec
 	./subleq gforth.dec
 
 tb.ghw: tb tb.cfg subleq.dec
-	${GHDL} -r $< --wave=$<.ghw ${GOPTS}
-
-fast_tb.ghw: fast_tb tb.cfg subleq.dec
-	${GHDL} -r $< --wave=$<.ghw ${GOPTS}
-
+	${GHDL} -r $< --wave=$<.ghw ${GOPTS} '-gbaud=115200' '-ggenerate_uart_tbs=true'
 
 SOURCES = \
 	top.vhd \
@@ -166,6 +156,7 @@ upload:
 
 design: clean simulation synthesis implementation bitfile
 
+NETLIST=top
 postsyn:
 	@netgen -w -ofmt vhdl -sim ${NETLIST}.ngc post_synthesis.vhd
 	@netgen -w -ofmt vhdl -sim ${NETLIST}.ngd post_translate.vhd

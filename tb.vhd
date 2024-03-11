@@ -13,16 +13,24 @@ use std.textio.all;
 use work.uart_pkg.all;
 
 entity tb is
+	-- With the GHDL simulator these generics can be overridden with
+	-- the following syntax:
+	--
+	-- 	ghdl -r tb '-gbaud=9600' '-ggenerate_non_io_tb=true'
+	--
+	generic (
+		baud:               positive := 115200;
+		generate_uart_tbs:  boolean  := false; -- Generate UART test benches as well?
+		generate_non_io_tb: boolean  := false -- Do not generate UART, talk directly to `system.vhd` which is faster
+	);
 end tb;
 
 architecture testing of tb is
 	constant g:                       common_generics := default_settings;
 	constant clock_period:            time     := 1000 ms / g.clock_frequency;
-	constant baud:                    positive := 115200;
 	constant clks_per_bit:            integer  := g.clock_frequency / baud;
 	constant bit_period:              time     := clks_per_bit * clock_period;
 	constant N:                       positive := 16;
-	constant generate_uart_tbs:       boolean  := true;
 	constant configuration_file_name: string   := "tb.cfg";
 	constant program_file_name:       string   := "subleq.dec";
 	--constant program_file_name:       string := "progs/hi.dec";
@@ -37,7 +45,8 @@ architecture testing of tb is
 	signal saw_char: boolean := false;
 
 	signal tx_data, rx_data: std_ulogic_vector(7 downto 0) := (others => '0');
-	signal rx_hav:  std_ulogic := '0'; 
+	signal io_re, rx_hav: std_ulogic := 'X';
+	signal ihav, obsy: std_ulogic := '0';
 	signal tx, rx:  std_ulogic := '1';
 
 	-- Test bench configurable options --
@@ -90,6 +99,27 @@ begin
 		uart_tb_1: entity work.uart_rx_tb;
 	end generate;
 
+	uut_g: if generate_non_io_tb generate
+	uut: entity work.system
+		generic map(
+			g          => g,
+			file_name  => program_file_name,
+			N          => N,
+			debug      => cfg.debug)
+		port map (
+			clk  => clk,
+			rst  => rst,
+			halted => halted,
+			blocked => blocked,
+			obyte => rx_data,
+			ibyte => tx_data,
+			obsy => obsy,
+		       	ihav => ihav,
+			io_we => rx_hav,
+			io_re => io_re);
+	end generate;
+
+	uut_gn: if not generate_non_io_tb generate
 	uut: entity work.top
 		generic map(
 			g          => g,
@@ -112,6 +142,7 @@ begin
 			rx_serial    => rx,
 			rx_have_data => rx_hav,
 			rx_byte      => rx_data);
+	end generate;
 
 	clock_process: process
 		variable count: integer := 0;
@@ -224,7 +255,23 @@ begin
 		variable iline: line;
 		variable good: boolean := true;
 		variable eoi:  boolean := false;
+
+		procedure write_byte(
+			ch: in character;
+			signal read_enable: in std_ulogic;
+			signal halt_system: in boolean;
+			signal have_byte: out std_ulogic;
+			signal byte_output: out std_ulogic_vector(7 downto 0)) is
+		begin
+			byte_output <= std_ulogic_vector(to_unsigned(character'pos(ch), byte_output'length));
+			have_byte <= '1';
+			wait for clock_period;
+			wait until read_enable = '1' or halt_system;
+			have_byte <= '0';
+		end procedure;
 	begin
+		ihav <= '0';
+		tx_data <= x"00";
 		wait until configured;
 
 		if cfg.interactive < 2 then
@@ -248,13 +295,21 @@ begin
 				else
 					eoi := true;
 					report "UART -> BCPU EOL/EOI: " & integer'image(character'pos(CR)) & " CR";
-					uart_write_byte(baud, std_ulogic_vector(to_unsigned(character'pos(CR), tx_data'length)), tx);
+					if generate_non_io_tb then
+						write_byte(CR, io_re, stop, ihav, tx_data);
+					else
+						uart_write_byte(baud, std_ulogic_vector(to_unsigned(character'pos(CR), tx_data'length)), tx);
+					end if;
 					wait for cfg.uart_char_delay;
 					if stop then exit; end if;
 					report "UART -> BCPU EOL/EOI: " & integer'image(character'pos(LF)) & " LF";
 					c := LF;
 				end if;
-				uart_write_byte(baud, std_ulogic_vector(to_unsigned(character'pos(c), tx_data'length)), tx);
+				if generate_non_io_tb then
+					write_byte(c, io_re, stop, ihav, tx_data);
+				else
+					uart_write_byte(baud, std_ulogic_vector(to_unsigned(character'pos(c), tx_data'length)), tx);
+				end if;
 				wait for cfg.uart_char_delay;
 			end loop;
 			if cfg.input_single_line then exit; end if;

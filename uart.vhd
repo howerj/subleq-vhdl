@@ -45,7 +45,7 @@ use ieee.numeric_std.all;
 
 package uart_pkg is
 	component uart_rx is
-		generic (clks_per_bit: integer := 868; N: positive := 8);
+		generic (clks_per_bit: integer := 868; N: positive := 8; delay: time := 0 ns);
 		port (
 			clk:           in std_ulogic;
 			rx_serial:     in std_ulogic;
@@ -54,11 +54,11 @@ package uart_pkg is
 	end component;
 
 	component uart_tx is
-		generic (clks_per_bit: integer := 868; N: positive := 8);
+		generic (clks_per_bit: integer := 868; N: positive := 8; delay: time := 0 ns);
 		port (
-			clk:        in  std_ulogic;
-			tx_we:      in  std_ulogic;
-			tx_byte:    in  std_ulogic_vector(N - 1 downto 0);
+			clk:        in std_ulogic;
+			tx_we:      in std_ulogic;
+			tx_byte:    in std_ulogic_vector(N - 1 downto 0);
 			tx_active: out std_ulogic;
 			tx_serial: out std_ulogic;
 			tx_done:   out std_ulogic);
@@ -119,7 +119,7 @@ use ieee.numeric_std.all;
 use work.uart_pkg.all;
 
 entity uart_rx is
-	generic (clks_per_bit: integer := 868; N: positive := 8);
+	generic (clks_per_bit: integer := 868; N: positive := 8; delay: time := 0 ns);
 	port (
 		clk:           in std_ulogic;
 		rx_serial:     in std_ulogic;
@@ -140,64 +140,64 @@ begin
 		if rising_edge(clk) then
 			case state is
 			when s_idle =>
-				r_rx_dv <= '0';
-				clk_count <= 0;
-				bit_index <= 0;
+				r_rx_dv <= '0' after delay;
+				clk_count <= 0 after delay;
+				bit_index <= 0 after delay;
 				if rx_serial = '0' then -- Start bit detected
-					state <= s_rx_start_bit;
+					state <= s_rx_start_bit after delay;
 				else
-					state <= s_idle;
+					state <= s_idle after delay;
 				end if;
 			when s_rx_start_bit => -- Check middle of start bit to make sure it's still low
 				if clk_count = (clks_per_bit - 1) / 2 then
 					if rx_serial = '0' then
-						clk_count <= 0; -- reset counter since we found the middle
-						state <= s_rx_data_bits;
+						clk_count <= 0 after delay; -- reset counter since we found the middle
+						state <= s_rx_data_bits after delay;
 					else
-						state <= s_idle;
+						state <= s_idle after delay;
 					end if;
 				else
-					clk_count <= clk_count + 1;
-					state <= s_rx_start_bit;
+					clk_count <= clk_count + 1 after delay;
+					state <= s_rx_start_bit after delay;
 				end if;
 			when s_rx_data_bits => -- Wait clks_per_bit - 1 clock cycles to sample serial data
 				if clk_count < (clks_per_bit - 1) then
-					clk_count <= clk_count + 1;
-					state <= s_rx_data_bits;
+					clk_count <= clk_count + 1 after delay;
+					state <= s_rx_data_bits after delay;
 				else
-					clk_count <= 0;
-					r_rx_byte(bit_index) <= rx_serial;
+					clk_count <= 0 after delay;
+					r_rx_byte(bit_index) <= rx_serial after delay;
 					
 					-- Check if we have sent out all bits
 					if bit_index < (N - 1) then
-						bit_index <= bit_index + 1;
-						state <= s_rx_data_bits;
+						bit_index <= bit_index + 1 after delay;
+						state <= s_rx_data_bits after delay;
 					else
-						bit_index <= 0;
-						state <= s_rx_stop_bit;
+						bit_index <= 0 after delay;
+						state <= s_rx_stop_bit after delay;
 					end if;
 				end if;
 			when s_rx_stop_bit => -- Receive Stop bit. Stop bit = 1
 				-- Wait clks_per_bit - 1 clock cycles for Stop bit to finish
 				if clk_count < (clks_per_bit - 1) then
-					clk_count <= clk_count + 1;
-					state <= s_rx_stop_bit;
+					clk_count <= clk_count + 1 after delay;
+					state <= s_rx_stop_bit after delay;
 				else
-					r_rx_dv <= '1';
-					clk_count <= 0;
-					state <= s_cleanup;
+					r_rx_dv <= '1' after delay;
+					clk_count <= 0 after delay;
+					state <= s_cleanup after delay;
 				end if;
 			when s_cleanup => -- Stay here 1 clock
-				state <= s_idle;
-				r_rx_dv <= '0';
+				state <= s_idle after delay;
+				r_rx_dv <= '0' after delay;
 			when others =>
-				state <= s_idle;
+				state <= s_idle after delay;
 			end case;
 		end if;
 	end process;
 
-	rx_have_data <= r_rx_dv;
-	rx_byte <= r_rx_byte;
+	rx_have_data <= r_rx_dv after delay;
+	rx_byte <= r_rx_byte after delay;
 end RTL;
 
 -- This file module contains the UART Transmitter.  This transmitter is able
@@ -216,7 +216,7 @@ use ieee.numeric_std.all;
 use work.uart_pkg.all;
 
 entity uart_tx is
-	generic (clks_per_bit: integer := 868; N: positive := 8);
+	generic (clks_per_bit: integer := 868; N: positive := 8; delay: time := 0 ns);
 	port (
 		clk:        in std_ulogic;
 		tx_we:      in std_ulogic;
@@ -241,68 +241,68 @@ begin
 			r_tx_done <= '0'; -- Default assignment
 			case state is
 			when idle =>
-				tx_active <= '0';
-				tx_serial <= '1'; -- Drive Line High for Idle
-				clk_count <= 0;
-				bit_index <= 0;
+				tx_active <= '0' after delay;
+				tx_serial <= '1' after delay; -- Drive Line High for Idle
+				clk_count <= 0 after delay;
+				bit_index <= 0 after delay;
 
 				if tx_we = '1' then
-					r_tx_data <= tx_byte;
-					state <= tx_start_bit;
+					r_tx_data <= tx_byte after delay;
+					state <= tx_start_bit after delay;
 				else
-					state <= idle;
+					state <= idle after delay;
 				end if;
 			when tx_start_bit => -- Send out Start Bit. Start bit = 0
-				tx_active <= '1';
-				tx_serial <= '0';
+				tx_active <= '1' after delay;
+				tx_serial <= '0' after delay;
 
 				-- Wait clks_per_bit - 1 clock cycles for start bit to finish
 				if clk_count < (clks_per_bit - 1) then
-					clk_count <= clk_count + 1;
-					state <= tx_start_bit;
+					clk_count <= clk_count + 1 after delay;
+					state <= tx_start_bit after delay;
 				else
-					clk_count <= 0;
-					state <= tx_data_bits;
+					clk_count <= 0 after delay;
+					state <= tx_data_bits after delay;
 				end if;
 			when tx_data_bits => -- Wait clks_per_bit - 1 clock cycles for data bits to finish
-				tx_serial <= r_tx_data(bit_index);
+				tx_serial <= r_tx_data(bit_index) after delay;
 				
 				if clk_count < (clks_per_bit - 1) then
-					clk_count <= clk_count + 1;
-					state <= tx_data_bits;
+					clk_count <= clk_count + 1 after delay;
+					state <= tx_data_bits after delay;
 				else
-					clk_count <= 0;
+					clk_count <= 0 after delay;
 					
 					-- Check if we have sent out all bits
 					if bit_index < tx_byte'high then
-						bit_index <= bit_index + 1;
-						state <= tx_data_bits;
+						bit_index <= bit_index + 1 after delay;
+						state <= tx_data_bits after delay;
 					else
-						bit_index <= 0;
-						state <= tx_stop_bit;
+						bit_index <= 0 after delay;
+						state <= tx_stop_bit after delay;
 					end if;
 				end if;
 			when tx_stop_bit => -- Send out Stop bit. Stop bit = 1
-				tx_serial <= '1';
+				tx_serial <= '1' after delay;
 
 				-- Wait clks_per_bit - 1 clock cycles for Stop bit to finish
 				if clk_count < (clks_per_bit - 1) then
-					clk_count <= clk_count + 1;
-					state <= tx_stop_bit;
+					clk_count <= clk_count + 1 after delay;
+					state <= tx_stop_bit after delay;
 				else
-					r_tx_done <= '1';
-					clk_count <= 0;
-					state <= cleanup;
+					r_tx_done <= '1' after delay;
+					clk_count <= 0 after delay;
+					state <= cleanup after delay;
 				end if;
 			when cleanup => -- Stay here 1 clock
-				tx_active <= '0';
-				state <= idle;
+				tx_active <= '0' after delay;
+				state <= idle after delay;
 			when others =>
-				state <= idle;
+				state <= idle after delay;
 			end case;
 		end if;
 	end process;
-	tx_done <= r_tx_done;
+	tx_done <= r_tx_done after delay;
 end architecture;
 ----------------------------------------------------------------------
 -- Tests RX Behavior
