@@ -10,29 +10,52 @@ gtkwave::/View/Show_Filled_High_Values 1
 set names {
 	top.tb.rst
 	top.tb.clk
-	top.tb.uut.system.cpu.a[15:0]
-	top.tb.uut.system.cpu.o[15:0]
-	top.tb.uut.system.cpu.i[15:0]
-	top.tb.uut.system.cpu.c.state
-	top.tb.uut.system.cpu.c.b[15:0]
-	top.tb.uut.system.cpu.c.c[15:0]
-	top.tb.uut.system.cpu.c.la[15:0]
-	top.tb.uut.system.cpu.c.lb[15:0]
-	top.tb.uut.system.cpu.c.pc[15:0]
-	top.tb.uut.system.cpu.c.input
-	top.tb.uut.system.cpu.c.output
-	top.tb.uut.system.cpu.c.stop
-	top.tb.uut.system.cpu.npc[15:0]
-	top.tb.uut.system.cpu.leq
-	top.tb.uut.system.cpu.neg
-	top.tb.uut.system.cpu.re
-	top.tb.uut.system.cpu.we
-	top.tb.uut.system.cpu.io_re
-	top.tb.uut.system.cpu.io_we
-	top.tb.uut.system.cpu.halted
-	top.tb.uut.system.cpu.blocked
-	top.tb.uut.obyte[7:0]
-	top.tb.uut.ibyte[7:0]
+	top.tb.gn.uut.system.cpu.a[15:0]
+	top.tb.gn.uut.system.cpu.o[15:0]
+	top.tb.gn.uut.system.cpu.i[15:0]
+	top.tb.gn.uut.system.cpu.c.state
+	top.tb.gn.uut.system.cpu.c.b[15:0]
+	top.tb.gn.uut.system.cpu.c.c[15:0]
+	top.tb.gn.uut.system.cpu.c.la[15:0]
+	top.tb.gn.uut.system.cpu.c.lb[15:0]
+	top.tb.gn.uut.system.cpu.c.pc[15:0]
+	top.tb.gn.uut.system.cpu.c.input
+	top.tb.gn.uut.system.cpu.c.output
+	top.tb.gn.uut.system.cpu.c.stop
+	top.tb.gn.uut.system.cpu.npc[15:0]
+	top.tb.gn.uut.system.cpu.leq
+	top.tb.gn.uut.system.cpu.neg
+	top.tb.gn.uut.system.cpu.re
+	top.tb.gn.uut.system.cpu.we
+	top.tb.gn.uut.system.cpu.io_re
+	top.tb.gn.uut.system.cpu.io_we
+	top.tb.gn.uut.system.cpu.halted
+	top.tb.gn.uut.system.cpu.blocked
+	top.tb.gn.uut.obyte[7:0]
+	top.tb.gn.uut.ibyte[7:0]
+	top.tb.gt.uut.system.cpu.a[15:0]
+	top.tb.gt.uut.system.cpu.o[15:0]
+	top.tb.gt.uut.system.cpu.i[15:0]
+	top.tb.gt.uut.system.cpu.c.state
+	top.tb.gt.uut.system.cpu.c.b[15:0]
+	top.tb.gt.uut.system.cpu.c.c[15:0]
+	top.tb.gt.uut.system.cpu.c.la[15:0]
+	top.tb.gt.uut.system.cpu.c.lb[15:0]
+	top.tb.gt.uut.system.cpu.c.pc[15:0]
+	top.tb.gt.uut.system.cpu.c.input
+	top.tb.gt.uut.system.cpu.c.output
+	top.tb.gt.uut.system.cpu.c.stop
+	top.tb.gt.uut.system.cpu.npc[15:0]
+	top.tb.gt.uut.system.cpu.leq
+	top.tb.gt.uut.system.cpu.neg
+	top.tb.gt.uut.system.cpu.re
+	top.tb.gt.uut.system.cpu.we
+	top.tb.gt.uut.system.cpu.io_re
+	top.tb.gt.uut.system.cpu.io_we
+	top.tb.gt.uut.system.cpu.halted
+	top.tb.gt.uut.system.cpu.blocked
+	top.tb.gt.uut.obyte[7:0]
+	top.tb.gt.uut.ibyte[7:0]
 	top.tb.tx
 	top.tb.rx
 }

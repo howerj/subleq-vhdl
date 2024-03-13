@@ -5,8 +5,11 @@ GOPTS=--max-stack-alloc=16384 --ieee-asserts=disable
 USB?=/dev/ttyUSB0
 BAUD?=115200
 DIFF?=vimdiff
-IMAGE=subleq
-#BAUD?=9600
+PROGRAM=subleq.dec
+BITS=16
+DEBUG=0
+CONFIG=tb.cfg
+TOP=top
 
 .PHONY: all run diff simulation viewer clean documentation synthesis implementation bitfile
 
@@ -14,8 +17,8 @@ IMAGE=subleq
 
 all: subleq simulation
 
-run: subleq ${IMAGE}.dec
-	./subleq ${IMAGE}.dec
+run: subleq ${PROGRAM}
+	./subleq ${PROGRAM}
 
 talk:
 	picocom --omap delbs -e b -b ${BAUD} ${USB}
@@ -55,17 +58,13 @@ gforth.dec: eforth.txt
 gforth: subleq gforth.dec
 	./subleq gforth.dec
 
-tb.ghw: tb tb.cfg subleq.dec
-	${GHDL} -r $< --wave=$<.ghw ${GOPTS} '-gbaud=115200' '-ggenerate_uart_tbs=true'
+tb.ghw: tb tb.cfg ${PROGRAM}
+	${GHDL} -r $< --wave=$@ ${GOPTS} '-gbaud=${BAUD}' '-gprogram=${PROGRAM}' '-gN=${BITS}' '-gconfig=${CONFIG}' '-gdebug=${DEBUG}' '-gen_non_io_tb=false'
 
-SOURCES = \
-	top.vhd \
-	subleq.vhd \
-	uart.vhd \
-	system.vhd \
-	util.vhd
+fast.ghw: tb tb.cfg ${PROGRAM}
+	${GHDL} -r $< --wave=$@ ${GOPTS} '-gbaud=${BAUD}' '-gprogram=${PROGRAM}' '-gN=${BITS}' '-gconfig=${CONFIG}' '-gdebug=${DEBUG}' '-gen_non_io_tb=true'
 
-OBJECTS = ${SOURCES:.vhd=.o}
+SOURCES=top.vhd subleq.vhd uart.vhd system.vhd util.vhd
 
 bitfile: design.bit
 
@@ -76,38 +75,38 @@ tmp:
 tmp/_xmsgs:
 	@[ -d tmp/_xmsgs ]    || mkdir tmp/_xmsgs
 
-tmp/top.prj: tmp
-	@rm -f tmp/top.prj
+tmp/${TOP}.prj: tmp
+	@rm -f tmp/${TOP}.prj
 	@( \
-	    for f in $(SOURCES); do \
+	    for f in ${SOURCES}; do \
 	        echo "vhdl work \"$$f\""; \
 	    done; \
-	    echo "vhdl work \"top.vhd\"" \
-	) > tmp/top.prj
+	    echo "vhdl work \"${TOP}.vhd\"" \
+	) > tmp/${TOP}.prj
 
-tmp/top.lso: tmp
-	@echo "work" > tmp/top.lso
+tmp/${TOP}.lso: tmp
+	@echo "work" > tmp/${TOP}.lso
 
-tmp/top.xst: tmp tmp/_xmsgs tmp/top.lso tmp/top.lso
+tmp/${TOP}.xst: tmp tmp/_xmsgs tmp/${TOP}.lso tmp/${TOP}.lso
 	@( \
 	    echo "set -tmpdir \"tmp\""; \
 	    echo "set -xsthdpdir \"tmp\""; \
 	    echo "run"; \
-	    echo "-lso tmp/top.lso"; \
-	    echo "-ifn tmp/top.prj"; \
-	    echo "-ofn top"; \
+	    echo "-lso tmp/${TOP}.lso"; \
+	    echo "-ifn tmp/${TOP}.prj"; \
+	    echo "-ofn ${TOP}"; \
 	    echo "-p xc6slx16-csg324-3"; \
-	    echo "-top top"; \
+	    echo "-top ${TOP}"; \
 	    echo "-opt_mode area"; \
 	    echo "-opt_level 2" \
 	) > tmp/top.xst
 
-synthesis: subleq.dec reports tmp tmp/_xmsgs tmp/top.prj tmp/top.xst
+synthesis: subleq.dec reports tmp tmp/_xmsgs tmp/${TOP}.prj tmp/${TOP}.xst
 	@echo "Synthesis running..."
-	@${TIME} xst -intstyle silent -ifn tmp/top.xst -ofn reports/xst.log
+	@${TIME} xst -intstyle silent -ifn tmp/${TOP}.xst -ofn reports/xst.log
 	@mv _xmsgs/* tmp/_xmsgs
 	@rmdir _xmsgs
-	@mv top_xst.xrpt tmp
+	@mv ${TOP}_xst.xrpt tmp
 	@grep "ERROR\|WARNING" reports/xst.log | \
 	 grep -v "WARNING.*has a constant value.*This FF/Latch will be trimmed during the optimization process." | \
 	 cat
@@ -118,37 +117,37 @@ implementation: reports tmp
 
 	@[ -d tmp/xlnx_auto_0_xdb ] || mkdir tmp/xlnx_auto_0_xdb
 
-	@${TIME} ngdbuild -intstyle silent -quiet -dd tmp -uc top.ucf -p xc6slx16-csg324-3 top.ngc top.ngd
-	@mv top.bld reports/ngdbuild.log
+	@${TIME} ngdbuild -intstyle silent -quiet -dd tmp -uc ${TOP}.ucf -p xc6slx16-csg324-3 ${TOP}.ngc ${TOP}.ngd
+	@mv ${TOP}.bld reports/ngdbuild.log
 	@mv _xmsgs/* tmp/_xmsgs
 	@rmdir _xmsgs
 	@mv xlnx_auto_0_xdb/* tmp
 	@rmdir xlnx_auto_0_xdb
-	@mv top_ngdbuild.xrpt tmp
+	@mv ${TOP}_ngdbuild.xrpt tmp
 
-	@${TIME} map -intstyle silent -detail -p xc6slx16-csg324-3 -convert_bram8 -pr b -c 100 -w -o top_map.ncd top.ngd top.pcf
-	@mv top_map.mrp reports/map.log
+	@${TIME} map -intstyle silent -detail -p xc6slx16-csg324-3 -convert_bram8 -pr b -c 100 -w -o ${TOP}_map.ncd ${TOP}.ngd ${TOP}.pcf
+	@mv ${TOP}_map.mrp reports/map.log
 	@mv _xmsgs/* tmp/_xmsgs
 	@rmdir _xmsgs
-	@mv top_usage.xml top_summary.xml top_map.map top_map.xrpt tmp
+	@mv ${TOP}_usage.xml ${TOP}_summary.xml ${TOP}_map.map ${TOP}_map.xrpt tmp
 
-	@${TIME} par -intstyle silent -w -ol std top_map.ncd top.ncd top.pcf
-	@mv top.par reports/par.log
-	@mv top_pad.txt reports/par_pad.txt
+	@${TIME} par -intstyle silent -w -ol std ${TOP}_map.ncd ${TOP}.ncd ${TOP}.pcf
+	@mv ${TOP}.par reports/par.log
+	@mv ${TOP}_pad.txt reports/par_pad.txt
 	@mv _xmsgs/* tmp/_xmsgs
 	@rmdir _xmsgs
-	@mv par_usage_statistics.html top.ptwx top.pad top_pad.csv top.unroutes top.xpi top_par.xrpt tmp
+	@mv par_usage_statistics.html ${TOP}.ptwx ${TOP}.pad ${TOP}_pad.csv ${TOP}.unroutes ${TOP}.xpi ${TOP}_par.xrpt tmp
 
 design.bit: reports tmp/_xmsgs
 	@echo "Generate bitfile running..."
 	@touch webtalk.log
-	@${TIME} bitgen -intstyle silent -w top.ncd
-	@mv top.bit design.bit
-	@mv top.bgn reports/bitgen.log
+	@${TIME} bitgen -intstyle silent -w ${TOP}.ncd
+	@mv ${TOP}.bit $@
+	@mv ${TOP}.bgn reports/bitgen.log
 	@mv _xmsgs/* tmp/_xmsgs
 	@rmdir _xmsgs
 	@sleep 5
-	@mv top.drc top_bitgen.xwbt top_usage.xml top_summary.xml webtalk.log tmp
+	@mv ${TOP}.drc ${TOP}_bitgen.xwbt ${TOP}_usage.xml ${TOP}_summary.xml webtalk.log tmp
 	@grep -i '\(warning\|clock period\)' reports/xst.log
 
 upload:
@@ -156,13 +155,12 @@ upload:
 
 design: clean simulation synthesis implementation bitfile
 
-NETLIST=top
 postsyn:
-	@netgen -w -ofmt vhdl -sim ${NETLIST}.ngc post_synthesis.vhd
-	@netgen -w -ofmt vhdl -sim ${NETLIST}.ngd post_translate.vhd
-	@netgen  -pcf ${NETLIST}.pcf -w -ofmt vhdl -sim ${NETLIST}.ncd post_map.vhd
+	@netgen -w -ofmt vhdl -sim ${TOP}.ngc post_synthesis.vhd
+	@netgen -w -ofmt vhdl -sim ${TOP}.ngd post_translate.vhd
+	@netgen  -pcf ${TOP}.pcf -w -ofmt vhdl -sim ${TOP}.ncd post_map.vhd
 
 clean:
-	git clean -fdx .
+	git clean -fddx .
 
 
