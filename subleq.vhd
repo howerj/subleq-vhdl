@@ -82,7 +82,6 @@ architecture rtl of subleq is
 		b:  std_ulogic_vector(N - 1 downto 0);
 		c:  std_ulogic_vector(N - 1 downto 0);
 		la: std_ulogic_vector(N - 1 downto 0);
-		lb: std_ulogic_vector(N - 1 downto 0);
 		pc: std_ulogic_vector(N - 1 downto 0);
 		state:  state_t;
 		stop: std_ulogic;
@@ -93,7 +92,6 @@ architecture rtl of subleq is
 		b  => (others => '0'),
 		c  => (others => '0'),
 		la => (others => '0'),
-		lb => (others => '0'),
 		pc => (others => '0'),
 		state => S_RESET,
 		stop => '0',
@@ -125,7 +123,6 @@ architecture rtl of subleq is
 			write(oline, int(c.b)   & " ");
 			write(oline, int(c.c)   & " ");
 			write(oline, int(c.la)  & " ");
-			write(oline, int(c.lb)  & " ");
 			if debug >= 3 and c.state /= f.state then
 				write(oline, state_t'image(c.state) & " => ");
 				write(oline, state_t'image(f.state));
@@ -220,7 +217,6 @@ begin
 			end if;
 		when S_LB =>
 			f.state <= S_STORE after delay;
-			f.lb <= i after delay;
 			f.la <= sub after delay;
 			a <= c.b after delay;
 			re <= '1' after delay;

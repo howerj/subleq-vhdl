@@ -1,19 +1,21 @@
-CC=gcc
-CFLAGS=-Wall -Wextra -std=c99 -O2 -pedantic
-GHDL=ghdl
-GOPTS=--max-stack-alloc=16384 --ieee-asserts=disable
-USB?=/dev/ttyUSB0
-BAUD?=115200
-DIFF?=vimdiff
+CC:=gcc
+CFLAGS:=-Wall -Wextra -std=c99 -O2 -pedantic
+GHDL:=ghdl
+GOPTS:=--max-stack-alloc=16384 --ieee-asserts=disable
+USB:=/dev/ttyUSB0
+BAUD:=115200
+DIFF:=vimdiff
 PROGRAM=subleq.dec
-BITS=16
-DEBUG=0
-CONFIG=tb.cfg
-TOP=top
+BITS:=16
+DEBUG:=0
+FAST:=false
+CONFIG:=tb.cfg
+TOP:=top
+GHW:=$(basename ${CONFIG}).ghw
 
 .PHONY: all run diff simulation viewer clean documentation synthesis implementation bitfile
 
-.PRECIOUS: tb.ghw
+.PRECIOUS: ${GHW}
 
 all: subleq simulation
 
@@ -23,9 +25,9 @@ run: subleq ${PROGRAM}
 talk:
 	picocom --omap delbs -e b -b ${BAUD} ${USB}
 
-simulation: tb.ghw
+simulation: ${GHW}
 
-viewer: tb.ghw signals.tcl
+viewer: ${GHW} signals.tcl
 	gtkwave -S signals.tcl -f $< > /dev/null 2>&1 &
 
 documentation: readme.htm
@@ -58,11 +60,8 @@ gforth.dec: eforth.txt
 gforth: subleq gforth.dec
 	./subleq gforth.dec
 
-tb.ghw: tb tb.cfg ${PROGRAM}
-	${GHDL} -r $< --wave=$@ ${GOPTS} '-gbaud=${BAUD}' '-gprogram=${PROGRAM}' '-gN=${BITS}' '-gconfig=${CONFIG}' '-gdebug=${DEBUG}' '-gen_non_io_tb=false'
-
-fast.ghw: tb tb.cfg ${PROGRAM}
-	${GHDL} -r $< --wave=$@ ${GOPTS} '-gbaud=${BAUD}' '-gprogram=${PROGRAM}' '-gN=${BITS}' '-gconfig=${CONFIG}' '-gdebug=${DEBUG}' '-gen_non_io_tb=true'
+${GHW}: tb ${CONFIG} ${PROGRAM}
+	${GHDL} -r $< --wave=$@ ${GOPTS} '-gbaud=${BAUD}' '-gprogram=${PROGRAM}' '-gN=${BITS}' '-gconfig=${CONFIG}' '-gdebug=${DEBUG}' '-gen_non_io_tb=${FAST}'
 
 SOURCES=top.vhd subleq.vhd uart.vhd system.vhd util.vhd
 

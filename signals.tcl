@@ -17,7 +17,6 @@ set names {
 	top.tb.gn.uut.system.cpu.c.b[15:0]
 	top.tb.gn.uut.system.cpu.c.c[15:0]
 	top.tb.gn.uut.system.cpu.c.la[15:0]
-	top.tb.gn.uut.system.cpu.c.lb[15:0]
 	top.tb.gn.uut.system.cpu.c.pc[15:0]
 	top.tb.gn.uut.system.cpu.c.input
 	top.tb.gn.uut.system.cpu.c.output
@@ -40,7 +39,6 @@ set names {
 	top.tb.gt.uut.system.cpu.c.b[15:0]
 	top.tb.gt.uut.system.cpu.c.c[15:0]
 	top.tb.gt.uut.system.cpu.c.la[15:0]
-	top.tb.gt.uut.system.cpu.c.lb[15:0]
 	top.tb.gt.uut.system.cpu.c.pc[15:0]
 	top.tb.gt.uut.system.cpu.c.input
 	top.tb.gt.uut.system.cpu.c.output
