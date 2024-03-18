@@ -189,41 +189,41 @@ begin
 				f.state <= S_A after delay;
 			end if;
 		when S_B =>
-			f.state <= S_C after delay;
+			f.state <= S_LA after delay;
 			f.b <= i after delay;
 			re <= '1' after delay;
-			a <= npc after delay;
+			a <= c.la after delay;
 			f.pc <= npc after delay;
 			if io = '1' then
 				f.output <= '1' after delay;
 			end if;
-		when S_C =>
-			f.state <= S_LA after delay;
-			f.c <= i after delay;
-			re <= '1' after delay;
-			a <= c.la after delay;
-			f.pc <= npc after delay;
 			if c.input = '1' then -- skip S_LA
 				a <= c.b after delay;
 				f.state <= S_LB after delay;
 			end if;
-		when S_LA =>
+		when S_LA => -- TODO: Skip S_LB if possible
 			f.state <= S_LB after delay;
 			f.la <= i after delay;
 			a <= c.b after delay;
 			re <= '1' after delay;
-			if c.output = '1' then -- skip S_LB
-				f.state <= S_OUT after delay;
-			end if;
 		when S_LB =>
-			f.state <= S_STORE after delay;
-			f.la <= sub after delay;
-			a <= c.b after delay;
+			f.state <= S_C after delay;
+			if c.output = '0' then
+				f.la <= sub after delay;
+			end if;
 			re <= '1' after delay;
+			a <= c.pc after delay;
+			f.pc <= npc after delay;
+		when S_C =>
+			f.state <= S_STORE after delay;
+			f.c <= i after delay;
+			a <= c.b after delay;
 			if c.input = '1' then
 				f.state <= S_IN after delay;
 				f.la <= (others => '0') after delay;
 				f.la(ibyte'range) <= ibyte after delay;
+			elsif c.output = '1' then
+				f.state <= S_OUT after delay;
 			end if;
 		when S_STORE =>
 			f.state <= S_NJMP after delay;
