@@ -20,6 +20,12 @@ Amazon, available [here](https://www.amazon.com/SUBLEQ-EFORTH-Forth-Metacompilat
 that describes how the eForth interpreter works and how to port a Forth to
 a new platform.
 
+If you are trying the eForth interpreter out on actual hardware note that you
+will have to leave a roughly 3 millisecond delay, at minimum, between 
+sending characters. This is not usually a problem when typing but can be when
+redirecting a file into the UART. This for multiple reasons, firstly the SUBLEQ
+eForth is fairly slow, and secondly there is no buffering done on the UART.
+
 A block diagram of the project for those with no imagination (you can
 tell I am a programmer and not a graphic designer):
 
@@ -205,14 +211,11 @@ can be pasted into [GraphvizOnline][].
 	  a -> b;
 	  a -> a [label = "pause = 1"];
 	  a -> halt;
-	  b -> c;
-	  c -> la;
-	  c -> lb [label = "a = -1"];
+	  b -> la;
+	  b -> in [label = "a = -1"];
 	  la -> lb;
 	  la -> out [label = "b = -1"];
 	  lb -> store;
-	  lb -> in [label = "a = -1"];
-	  halt -> halt;
 
 	  store -> jmp [label="jmp\nres <= 0"];
 	  store -> njmp;
@@ -225,6 +228,8 @@ can be pasted into [GraphvizOnline][].
 
 	  out -> a;
 	  out -> out [label="obsy = '1'"];
+
+	  halt -> halt;
 	}
 
 ## To Do and Wish List
@@ -268,9 +273,12 @@ can be pasted into [GraphvizOnline][].
         It is also MIT licensed (or the version I have is).
   * [x] Optionally generate the UART test benches in the top level component
         as well as directly intefacing with `system.vhd` (again, optionally)
+  * [x] Optimize number of states needed to execute a SUBLEQ instruction and 
+        transitions in CPU (down from 8 to 6).
+  * [x] Hook up `blocked` and `halted` to an LED? (The `blocked` line would
+        need some kind of pulse lengthening to become visible) (will not do)
   * [ ] Find way of interacting with other hardware
   * [ ] Optimize SUBLEQ design for slice area (and speed if possible)
-  * [ ] Hook up `blocked` and `halted` to an LED?
 
 ## Other SUBLEQ projects
 

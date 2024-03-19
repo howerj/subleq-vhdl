@@ -72,10 +72,10 @@ end;
 architecture rtl of subleq is
 	type state_t is (
 		S_RESET, 
-		S_A, S_B, S_C, S_LA, S_LB, 
-		S_STORE, 
-		S_JMP, S_NJMP, 
-		S_IN, S_OUT, 
+		S_A, S_B, S_LA, S_LB,
+		S_STORE,
+		S_JMP, S_NJMP,
+		S_IN, S_OUT,
 		S_HALT);
 
 	type registers_t is record
@@ -189,44 +189,37 @@ begin
 				f.state <= S_A after delay;
 			end if;
 		when S_B =>
-			f.state <= S_C after delay;
+			f.state <= S_LA after delay;
 			f.b <= i after delay;
 			re <= '1' after delay;
-			a <= npc after delay;
+			a <= c.la after delay;
 			f.pc <= npc after delay;
 			if io = '1' then
 				f.output <= '1' after delay;
 			end if;
-		when S_C =>
-			f.state <= S_LA after delay;
-			f.c <= i after delay;
-			re <= '1' after delay;
-			a <= c.la after delay;
-			f.pc <= npc after delay;
 			if c.input = '1' then -- skip S_LA
-				a <= c.b after delay;
-				f.state <= S_LB after delay;
+				a <= i after delay;
+				f.state <= S_IN after delay;
+				f.la <= (others => '0') after delay;
+				f.la(ibyte'range) <= ibyte after delay;
 			end if;
 		when S_LA =>
 			f.state <= S_LB after delay;
 			f.la <= i after delay;
 			a <= c.b after delay;
 			re <= '1' after delay;
-			if c.output = '1' then -- skip S_LB
+			if c.output = '1' then
+				a <= c.pc after delay;
 				f.state <= S_OUT after delay;
 			end if;
 		when S_LB =>
 			f.state <= S_STORE after delay;
 			f.la <= sub after delay;
-			a <= c.b after delay;
 			re <= '1' after delay;
-			if c.input = '1' then
-				f.state <= S_IN after delay;
-				f.la <= (others => '0') after delay;
-				f.la(ibyte'range) <= ibyte after delay;
-			end if;
+			a <= c.pc after delay;
 		when S_STORE =>
 			f.state <= S_NJMP after delay;
+			f.c <= i after delay;
 			a <= c.b after delay;
 			we <= '1' after delay;
 			if leq0 = jump_leq and c.input = '0' then
@@ -239,9 +232,11 @@ begin
 			re <= '1' after delay;
 		when S_NJMP =>
 			f.state <= S_A after delay;
+			f.pc <= npc after delay;
+			a <= npc after delay;
 			re <= '1' after delay;
 		when S_IN =>
-			a <= c.b after delay; -- hold address
+			a <= c.b after delay;
 			f.la <= (others => '0');
 			f.la(ibyte'range) <= ibyte after delay;
 			blocked <= '1' after delay;
@@ -255,7 +250,8 @@ begin
 				blocked <= '0' after delay;
 			end if;
 		when S_OUT =>
-			a <= c.pc after delay;
+			a <= npc after delay;
+			f.pc <= npc after delay;
 			re <= '1' after delay;
 			blocked <= '1' after delay;
 			if obsy = '0' then
