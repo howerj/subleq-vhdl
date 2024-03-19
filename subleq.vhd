@@ -72,10 +72,10 @@ end;
 architecture rtl of subleq is
 	type state_t is (
 		S_RESET, 
-		S_A, S_B, S_LA, S_LB, 
-		S_STORE, 
-		S_JMP, S_NJMP, 
-		S_IN, S_OUT, 
+		S_A, S_B, S_LA, S_LB,
+		S_STORE,
+		S_JMP, S_NJMP,
+		S_IN, S_OUT,
 		S_HALT);
 
 	type registers_t is record
@@ -198,19 +198,23 @@ begin
 				f.output <= '1' after delay;
 			end if;
 			if c.input = '1' then -- skip S_LA
-				a <= c.b after delay;
-				f.state <= S_LB after delay;
+				a <= i after delay;
+				f.state <= S_IN after delay;
+				f.la <= (others => '0') after delay;
+				f.la(ibyte'range) <= ibyte after delay;
 			end if;
-		when S_LA => -- TODO: Skip S_LB if possible, also update state-machine diagram
+		when S_LA =>
 			f.state <= S_LB after delay;
 			f.la <= i after delay;
 			a <= c.b after delay;
 			re <= '1' after delay;
+			if c.output = '1' then
+				a <= c.pc after delay;
+				f.state <= S_OUT after delay;
+			end if;
 		when S_LB =>
 			f.state <= S_STORE after delay;
-			if c.output = '0' then
-				f.la <= sub after delay;
-			end if;
+			f.la <= sub after delay;
 			re <= '1' after delay;
 			a <= c.pc after delay;
 		when S_STORE =>
@@ -218,13 +222,7 @@ begin
 			f.c <= i after delay;
 			a <= c.b after delay;
 			we <= '1' after delay;
-			if c.input = '1' then -- TODO: Remove S_STORE <-> S_IN Loop
-				f.state <= S_IN after delay;
-				f.la <= (others => '0') after delay;
-				f.la(ibyte'range) <= ibyte after delay;
-			elsif c.output = '1' then
-				f.state <= S_OUT after delay;
-			elsif leq0 = jump_leq  then
+			if leq0 = jump_leq and c.input = '0' then
 				f.state <= S_JMP after delay;
 			end if;
 		when S_JMP =>
@@ -237,13 +235,11 @@ begin
 			f.pc <= npc after delay;
 			a <= npc after delay;
 			re <= '1' after delay;
-		when S_IN => -- TODO: Input not quite working
-			a <= c.pc after delay; -- hold address
-			re <= '1' after delay;
+		when S_IN =>
+			a <= c.b after delay;
 			f.la <= (others => '0');
 			f.la(ibyte'range) <= ibyte after delay;
 			blocked <= '1' after delay;
-			f.input <= '0' after delay;
 			if ihav = '1' then
 				f.state <= S_STORE after delay;
 				io_re <= '1' after delay;
