@@ -129,6 +129,16 @@ architecture rtl of subleq is
 		-- synthesis translate_on
 	end procedure;
 begin
+	-- The following asserts could be placed in this module if what
+	-- they were asserting was "buffered". As they are not, they go
+	-- in the next module up.
+	--
+	--   assert not (re = '1' and we = '1') severity warning;
+	--   assert not (io_re = '1' and io_we = '1') severity warning;
+
+	assert not (c.input = '1' and c.output = '1') severity warning;
+	assert N >= 8 severity failure;
+
 	npc   <= std_ulogic_vector(unsigned(c.pc) + 1) after delay;
 	sub   <= std_ulogic_vector(unsigned(i) - unsigned(c.la)) after delay;
 	leq0  <= '1' when c.la(c.la'high) = '1' or c.la = AZ else '0' after delay;
