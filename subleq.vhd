@@ -79,18 +79,16 @@ architecture rtl of subleq is
 		S_HALT);
 
 	type registers_t is record
-		b:  std_ulogic_vector(N - 1 downto 0);
-		c:  std_ulogic_vector(N - 1 downto 0);
-		la: std_ulogic_vector(N - 1 downto 0);
-		pc: std_ulogic_vector(N - 1 downto 0);
-		state:  state_t;
-		stop: std_ulogic;
+		b:     std_ulogic_vector(N - 1 downto 0);
+		la:    std_ulogic_vector(N - 1 downto 0);
+		pc:    std_ulogic_vector(N - 1 downto 0);
+		state: state_t;
+		stop:  std_ulogic;
 		input, output: std_ulogic;
 	end record;
 
 	constant registers_default: registers_t := (
 		b  => (others => '0'),
-		c  => (others => '0'),
 		la => (others => '0'),
 		pc => (others => '0'),
 		state => S_RESET,
@@ -121,7 +119,6 @@ architecture rtl of subleq is
 			write(oline, int(c.pc)  & ": ");
 			write(oline, state_t'image(c.state) & HT);
 			write(oline, int(c.b)   & " ");
-			write(oline, int(c.c)   & " ");
 			write(oline, int(c.la)  & " ");
 			if debug >= 3 and c.state /= f.state then
 				write(oline, state_t'image(c.state) & " => ");
@@ -179,14 +176,14 @@ begin
 			f.pc <= npc after delay;
 			f.input <= '0' after delay;
 			f.output <= '0' after delay;
-			if io = '1' then
-				f.input <= '1' after delay;
-			end if;
+
 			if c.stop = '1' then
 				f.state <= S_HALT after delay;
 			elsif pause = '1' then
 				blocked <= '1' after delay;
 				f.state <= S_A after delay;
+			elsif io = '1' then
+				f.input <= '1' after delay;
 			end if;
 		when S_B =>
 			f.state <= S_LA after delay;
@@ -194,14 +191,13 @@ begin
 			re <= '1' after delay;
 			a <= c.la after delay;
 			f.pc <= npc after delay;
-			if io = '1' then
-				f.output <= '1' after delay;
-			end if;
 			if c.input = '1' then -- skip S_LA
 				a <= i after delay;
 				f.state <= S_IN after delay;
 				f.la <= (others => '0') after delay;
 				f.la(ibyte'range) <= ibyte after delay;
+			elsif io = '1' then
+				f.output <= '1' after delay;
 			end if;
 		when S_LA =>
 			f.state <= S_LB after delay;
@@ -219,7 +215,7 @@ begin
 			a <= c.pc after delay;
 		when S_STORE =>
 			f.state <= S_NJMP after delay;
-			f.c <= i after delay;
+			f.la <= i after delay;
 			a <= c.b after delay;
 			we <= '1' after delay;
 			if leq0 = jump_leq and c.input = '0' then
@@ -227,8 +223,8 @@ begin
 			end if;
 		when S_JMP =>
 			f.state <= S_A after delay;
-			a <= c.c after delay;
-			f.pc <= c.c after delay;
+			a <= c.la after delay;
+			f.pc <= c.la after delay;
 			re <= '1' after delay;
 		when S_NJMP =>
 			f.state <= S_A after delay;
@@ -237,7 +233,7 @@ begin
 			re <= '1' after delay;
 		when S_IN =>
 			a <= c.b after delay;
-			f.la <= (others => '0');
+			f.la <= (others => '0') after delay;
 			f.la(ibyte'range) <= ibyte after delay;
 			blocked <= '1' after delay;
 			if ihav = '1' then
@@ -246,7 +242,7 @@ begin
 				blocked <= '0' after delay;
 			elsif non_blocking_input then
 				f.state <= S_STORE after delay;
-				f.la <= (others => '1');
+				f.la <= (others => '1') after delay;
 				blocked <= '0' after delay;
 			end if;
 		when S_OUT =>
