@@ -75,6 +75,9 @@ architecture rtl of system is
 		-- synthesis translate_on
 	end procedure;
 begin
+	assert not (re = '1' and we = '1') severity warning;
+	assert a(a'high downto a'high - 2) = "000" severity warning;
+
 	-- synthesis translate_off
 	process (clk) begin
 		if rising_edge(clk) then

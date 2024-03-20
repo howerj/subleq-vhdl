@@ -50,6 +50,8 @@ architecture rtl of top is
 	signal c_ibyte, n_ibyte: std_ulogic_vector(7 downto 0) := (others => '0');
 
 begin
+	assert not (io_re = '1' and io_we = '1') severity warning;
+
 	process (clk, rst) begin -- N.B. We could use register components for this
 		if rst = '1' and g.asynchronous_reset then
 			c_hav <= '0';
@@ -83,8 +85,7 @@ begin
 		g => g,
 		file_name => file_name,
 		N => N,
-		debug => debug
-	)
+		debug => debug)
 	port map (
 		clk     => clk,
 		rst     => rst,

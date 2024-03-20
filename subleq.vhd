@@ -49,16 +49,16 @@ entity subleq is
 		asynchronous_reset: boolean    := true;   -- use asynchronous reset if true, synchronous if false
 		delay:              time       := 0 ns;   -- simulation only, gate delay
 		N:                  positive   := 16;     -- size the CPU
-		jump_leq:           std_ulogic := '1';    -- '1' to jump on less-than-or-equal, '0' on positive
+		jump_leq:           std_ulogic := '1';    -- '1' to jump on less-than-or-equal to zero, '0' on positive
 		non_blocking_input: boolean    := false;  -- if true, input will be -1 if there is no input
 		strict_io:          boolean    := true;   -- if true, I/O happens when `a` or `b` are -1, else when high bit set
 		debug:              natural    := 0);     -- debug level, 0 = off
 	port (
 		clk:           in std_ulogic; -- Guess what this is?
 		rst:           in std_ulogic; -- Can be sync or async
-		o:            out std_ulogic_vector(N - 1 downto 0);
-		i:             in std_ulogic_vector(N - 1 downto 0);
-		a:            out std_ulogic_vector(N - 1 downto 0);
+		o:            out std_ulogic_vector(N - 1 downto 0); -- Memory access; Output
+		i:             in std_ulogic_vector(N - 1 downto 0); -- Memory access; Input
+		a:            out std_ulogic_vector(N - 1 downto 0); -- Memory access; Address
 		we, re:       out std_ulogic; -- Write and read enable for memory only
 		obyte:        out std_ulogic_vector(7 downto 0); -- UART output byte
 		ibyte:         in std_ulogic_vector(7 downto 0); -- UART input byte
@@ -71,20 +71,26 @@ end;
 
 architecture rtl of subleq is
 	type state_t is (
-		S_RESET, 
-		S_A, S_B, S_LA, S_LB,
-		S_STORE,
-		S_JMP, S_NJMP,
-		S_IN, S_OUT,
-		S_HALT);
+		S_RESET,  -- Starting State
+		S_A,      -- Load A / Check if input
+		S_B,      -- Load B / Check if output
+		S_LA,     -- Load m[A] / Jump to output
+		S_LB,     -- Load m[B] / Jump to input
+		S_STORE,  -- Store Result
+		S_JMP,    -- PC = C
+		S_NJMP,   -- No Jump
+		S_IN,     -- Wait for input
+		S_OUT,    -- Output byte when ready
+		S_HALT);  -- Stop for it is the time of hammers
 
 	type registers_t is record
-		b:     std_ulogic_vector(N - 1 downto 0);
-		la:    std_ulogic_vector(N - 1 downto 0);
-		pc:    std_ulogic_vector(N - 1 downto 0);
-		state: state_t;
-		stop:  std_ulogic;
-		input, output: std_ulogic;
+		b:      std_ulogic_vector(N - 1 downto 0); -- Multi purpose register
+		la:     std_ulogic_vector(N - 1 downto 0); -- Multi purpose register
+		pc:     std_ulogic_vector(N - 1 downto 0); -- Program Counter
+		state:  state_t; -- CPU State Register
+		stop:   std_ulogic; -- CPU Halt Flag
+		input:  std_ulogic; -- CPU Instruction-is-input Flag
+		output: std_ulogic; -- CPU Instruction-is-output Flag
 	end record;
 
 	constant registers_default: registers_t := (
@@ -97,11 +103,11 @@ architecture rtl of subleq is
 		output => '0');
 
 	signal c, f: registers_t := registers_default; -- All state is captured in here
-	signal leq0, ones, high, io: std_ulogic := '0'; -- CPU Flags
+	signal leq0, ones, high, io, dop: std_ulogic := '0'; -- Transient CPU Flags
 	signal sub, npc: std_ulogic_vector(N - 1 downto 0) := (others => '0');
 
-	constant AZ: std_ulogic_vector(N - 1 downto 0) := (others => '0');
-	constant AO: std_ulogic_vector(N - 1 downto 0) := (others => '1');
+	constant AZ: std_ulogic_vector(N - 1 downto 0) := (others => '0'); -- All Zeros
+	constant AO: std_ulogic_vector(N - 1 downto 0) := (others => '1'); -- All Ones
 
 	-- Obviously this does not synthesize, which is why synthesis is turned
 	-- off for the body of this function, it does make debugging much easier
@@ -129,6 +135,16 @@ architecture rtl of subleq is
 		-- synthesis translate_on
 	end procedure;
 begin
+	-- The following asserts could be placed in this module if what
+	-- they were asserting was "buffered". As they are not, they go
+	-- in the next module up.
+	--
+	--   assert not (re = '1' and we = '1') severity warning;
+	--   assert not (io_re = '1' and io_we = '1') severity warning;
+
+	assert not (c.input = '1' and c.output = '1') severity warning;
+	assert N >= 8 severity failure;
+
 	npc   <= std_ulogic_vector(unsigned(c.pc) + 1) after delay;
 	sub   <= std_ulogic_vector(unsigned(i) - unsigned(c.la)) after delay;
 	leq0  <= '1' when c.la(c.la'high) = '1' or c.la = AZ else '0' after delay;
@@ -137,6 +153,8 @@ begin
 	ones  <= '1' when strict_io and i = AO else '0' after delay;
 	high  <= '1' when (not strict_io) and i(i'high) = '1' else '0' after delay;
 	io    <= '1' when ones = '1' or high = '1' else '0' after delay;
+	re    <= not dop after delay;
+	we    <= dop after delay;
 
 	process (clk, rst) begin
 		if rst = '1' and asynchronous_reset then
@@ -156,8 +174,7 @@ begin
 		halted <= '0' after delay;
 		io_we <= '0' after delay;
 		io_re <= '0' after delay;
-		we <= '0' after delay;
-		re <= '0' after delay;
+		dop <= '0' after delay;
 		a <= c.pc after delay;
 		blocked <= '0' after delay;
 		if c.pc(c.pc'high) = '1' then f.stop <= '1' after delay; end if;
@@ -167,43 +184,43 @@ begin
 			f <= registers_default after delay;
 			f.state <= S_A after delay;
 			a <= (others => '0') after delay;
-			re <= '1' after delay;
 		when S_A =>
 			f.state <= S_B after delay;
 			f.la <= i after delay;
-			re <= '1' after delay;
 			a <= npc after delay;
 			f.pc <= npc after delay;
 			f.input <= '0' after delay;
 			f.output <= '0' after delay;
+
+			if io = '1' then
+				f.input <= '1' after delay;
+			end if;
 
 			if c.stop = '1' then
 				f.state <= S_HALT after delay;
 			elsif pause = '1' then
 				blocked <= '1' after delay;
 				f.state <= S_A after delay;
-			elsif io = '1' then
-				f.input <= '1' after delay;
 			end if;
 		when S_B =>
 			f.state <= S_LA after delay;
 			f.b <= i after delay;
-			re <= '1' after delay;
 			a <= c.la after delay;
 			f.pc <= npc after delay;
+			if io = '1' then
+				f.output <= '1' after delay;
+			end if;
+
 			if c.input = '1' then -- skip S_LA
 				a <= i after delay;
 				f.state <= S_IN after delay;
 				f.la <= (others => '0') after delay;
 				f.la(ibyte'range) <= ibyte after delay;
-			elsif io = '1' then
-				f.output <= '1' after delay;
 			end if;
 		when S_LA =>
 			f.state <= S_LB after delay;
 			f.la <= i after delay;
 			a <= c.b after delay;
-			re <= '1' after delay;
 			if c.output = '1' then
 				a <= c.pc after delay;
 				f.state <= S_OUT after delay;
@@ -211,26 +228,22 @@ begin
 		when S_LB =>
 			f.state <= S_STORE after delay;
 			f.la <= sub after delay;
-			re <= '1' after delay;
 			a <= c.pc after delay;
 		when S_STORE =>
 			f.state <= S_NJMP after delay;
-			f.la <= i after delay;
+			f.b <= i after delay;
+			f.pc <= npc after delay;
 			a <= c.b after delay;
-			we <= '1' after delay;
+			dop <= '1' after delay;
 			if leq0 = jump_leq and c.input = '0' then
 				f.state <= S_JMP after delay;
 			end if;
 		when S_JMP =>
 			f.state <= S_A after delay;
-			a <= c.la after delay;
-			f.pc <= c.la after delay;
-			re <= '1' after delay;
-		when S_NJMP =>
+			a <= c.b after delay;
+			f.pc <= c.b after delay;
+		when S_NJMP => -- This performs a read using `c.pc`
 			f.state <= S_A after delay;
-			f.pc <= npc after delay;
-			a <= npc after delay;
-			re <= '1' after delay;
 		when S_IN =>
 			a <= c.b after delay;
 			f.la <= (others => '0') after delay;
@@ -248,7 +261,6 @@ begin
 		when S_OUT =>
 			a <= npc after delay;
 			f.pc <= npc after delay;
-			re <= '1' after delay;
 			blocked <= '1' after delay;
 			if obsy = '0' then
 				f.state <= S_A after delay;
