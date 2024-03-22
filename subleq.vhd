@@ -35,9 +35,6 @@
 -- Block RAM component into here, and the UART would need simplifying.
 -- * Improve Input/Output capabilities allowing multiple peripherals
 -- to be hung off of the design.
--- * The simulation could be sped up by not simulating the UART,
--- instead just doing byte oriented I/O.
--- * The design could be optimized somewhat.
 --
 library ieee, work, std;
 use ieee.std_logic_1164.all;
@@ -49,7 +46,7 @@ entity subleq is
 		asynchronous_reset: boolean    := true;   -- use asynchronous reset if true, synchronous if false
 		delay:              time       := 0 ns;   -- simulation only, gate delay
 		N:                  positive   := 16;     -- size the CPU
-		jump_leq:           std_ulogic := '1';    -- '1' to jump on less-than-or-equal to zero, '0' on positive
+		jspec:              std_ulogic_vector(4 downto 0) := "11111"; -- Jump specification
 		non_blocking_input: boolean    := false;  -- if true, input will be -1 if there is no input
 		strict_io:          boolean    := true;   -- if true, I/O happens when `a` or `b` are -1, else when high bit set
 		debug:              natural    := 0);     -- debug level, 0 = off
@@ -87,27 +84,36 @@ architecture rtl of subleq is
 		b:      std_ulogic_vector(N - 1 downto 0); -- Multi purpose register
 		la:     std_ulogic_vector(N - 1 downto 0); -- Multi purpose register
 		pc:     std_ulogic_vector(N - 1 downto 0); -- Program Counter
-		state:  state_t; -- CPU State Register
+		state:  state_t;    -- CPU State Register
 		stop:   std_ulogic; -- CPU Halt Flag
 		input:  std_ulogic; -- CPU Instruction-is-input Flag
 		output: std_ulogic; -- CPU Instruction-is-output Flag
 	end record;
 
 	constant registers_default: registers_t := (
-		b  => (others => '0'),
-		la => (others => '0'),
-		pc => (others => '0'),
-		state => S_RESET,
-		stop => '0',
-		input => '0',
+		b      => (others => '0'),
+		la     => (others => '0'),
+		pc     => (others => '0'),
+		state  => S_RESET,
+		stop   => '0',
+		input  => '0',
 		output => '0');
 
 	signal c, f: registers_t := registers_default; -- All state is captured in here
-	signal leq0, ones, high, io, dop: std_ulogic := '0'; -- Transient CPU Flags
+	signal jump, zero, ones, high, io, dop: std_ulogic := '0'; -- Transient CPU Flags
 	signal sub, npc: std_ulogic_vector(N - 1 downto 0) := (others => '0');
 
 	constant AZ: std_ulogic_vector(N - 1 downto 0) := (others => '0'); -- All Zeros
 	constant AO: std_ulogic_vector(N - 1 downto 0) := (others => '1'); -- All Ones
+
+	-- These constants are used to index into the jump specification, this allows
+	-- us to make alternative OISC machines by specifying a generic instead of making
+	-- an entirely new machine.
+	constant JS_C:   integer := 0; -- Jump on all condition or'd = '1' or '0'
+	constant JS_ZEN: integer := 1; -- Enable Jumping on zero comparison 
+	constant JS_ZC:  integer := 2; -- '1' = Jump on Zero, '0' = Jump on Non-Zero if enabled
+	constant JS_NEN: integer := 3; -- Enable Jumping on negative (high bit set)
+	constant JS_NC:  integer := 4; -- '1' = Jump on Negative, '0' = Jump on 
 
 	-- Obviously this does not synthesize, which is why synthesis is turned
 	-- off for the body of this function, it does make debugging much easier
@@ -142,12 +148,13 @@ begin
 	--   assert not (re = '1' and we = '1') severity warning;
 	--   assert not (io_re = '1' and io_we = '1') severity warning;
 
-	assert not (c.input = '1' and c.output = '1') severity warning;
-	assert N >= 8 severity failure;
+	assert not (c.input = '1' and c.output = '1') report "Input and Output flag set a the same time" severity warning;
+	assert N >= 8 report "SUBLEQ machine width too small, must be greater or equal to 8 bits" severity failure;
 
 	npc   <= std_ulogic_vector(unsigned(c.pc) + 1) after delay;
 	sub   <= std_ulogic_vector(unsigned(i) - unsigned(c.la)) after delay;
-	leq0  <= '1' when c.la(c.la'high) = '1' or c.la = AZ else '0' after delay;
+	zero  <= '1' when jspec(JS_ZEN) = '1' and c.la = AZ else '0' after delay;
+	jump  <= '1' when (jspec(JS_NEN) = '1' and c.la(c.la'high) = jspec(JS_NC)) or zero = jspec(JS_ZC) else '0' after delay;
 	o     <= c.la after delay;
 	obyte <= c.la(obyte'range) after delay;
 	ones  <= '1' when strict_io and i = AO else '0' after delay;
@@ -165,16 +172,28 @@ begin
 				c.state <= S_RESET after delay;
 			else
 				print_debug_info;
+
+				if c.state = S_RESET then assert f.state = S_A severity warning; end if;
+				if c.state = S_HALT  then assert f.state = S_HALT severity warning; end if;
+				if c.state = S_A     then assert f.state = S_B or f.state = S_A or f.state = S_HALT severity warning; end if;
+				if c.state = S_B     then assert f.state = S_LA or f.state = S_IN severity warning; end if;
+				if c.state = S_LA    then assert f.state = S_LB or f.state = S_OUT severity warning; end if;
+				if c.state = S_LB    then assert f.state = S_STORE severity warning; end if;
+				if c.state = S_STORE then assert f.state = S_JMP or f.state = S_NJMP severity warning; end if;
+				if c.state = S_JMP   then assert f.state = S_A severity warning; end if;
+				if c.state = S_NJMP  then assert f.state = S_A severity warning; end if;
+				if c.state = S_IN    then assert f.state = S_IN or f.state = S_STORE severity warning; end if;
+				if c.state = S_OUT   then assert f.state = S_OUT or f.state = S_A severity warning; end if;
 			end if;
 		end if;
 	end process;
 
-	process (c, i, npc, io, leq0, sub, ibyte, obsy, ihav, pause) begin
+	process (c, i, npc, io, jump, sub, ibyte, obsy, ihav, pause) begin
 		f <= c after delay;
 		halted <= '0' after delay;
 		io_we <= '0' after delay;
 		io_re <= '0' after delay;
-		dop <= '0' after delay;
+		dop <= '0' after delay; -- read enabled when `dop='0'`, write otherwise
 		a <= c.pc after delay;
 		blocked <= '0' after delay;
 		if c.pc(c.pc'high) = '1' then f.stop <= '1' after delay; end if;
@@ -235,7 +254,7 @@ begin
 			f.pc <= npc after delay;
 			a <= c.b after delay;
 			dop <= '1' after delay;
-			if leq0 = jump_leq and c.input = '0' then
+			if jump = jspec(JS_C) and c.input = '0' then
 				f.state <= S_JMP after delay;
 			end if;
 		when S_JMP =>
