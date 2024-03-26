@@ -223,6 +223,13 @@ begin
 		variable oline: line;
 		variable c: character;
 		variable have_char: boolean := true;
+
+		function isgraph(ch: in character) return boolean is
+			variable v: integer := 0;
+		begin
+			v := integer(character'pos(ch));
+			return v > 32 and v < 127;
+		end function;
 	begin
 		wait until configured;
 
@@ -237,7 +244,11 @@ begin
 			if not stop then
 				c := character'val(to_integer(unsigned(rx_data)));
 				if (cfg.report_uart) then
-					report "BCPU -> UART CHAR: " & integer'image(to_integer(unsigned(rx_data))) & " CH: " & c;
+					if isgraph(c) then
+						report "BCPU -> UART CHAR: " & integer'image(to_integer(unsigned(rx_data))) & " CH: " & c;
+					else
+						report "BCPU -> UART CHAR: " & integer'image(to_integer(unsigned(rx_data))) & " CH: <NON-GRAPHICAL>";
+					end if;
 				end if;
 				write(oline, c);
 				have_char := true;
@@ -278,6 +289,7 @@ begin
 			wait until read_enable = '1' or halt_system;
 			have_byte <= '0';
 		end procedure;
+
 	begin
 		ihav <= '0';
 		tx_data <= x"00";

@@ -34,7 +34,17 @@
 -- the mentioned Forth interpreter). This would mean moving the
 -- Block RAM component into here, and the UART would need simplifying.
 -- * Improve Input/Output capabilities allowing multiple peripherals
--- to be hung off of the design.
+-- to be hung off of the design. This can be done if `strict_io` is
+-- disabled, the high bit indicates I/O, the lower bits would indicate
+-- the I/O address.
+-- * The design document <https://www.gaisler.com/doc/vhdl2proc.pdf>,
+-- or "Fault-tolerant Microprocessors for Space Applications" by
+-- Jiri Gaisler describes a two process model for structuring components
+-- in VHDL that is partially followed here. This could be improved with
+-- record types for the modules input and output signals (except the
+-- clock and reset lines). For this to work the same methodology needs
+-- to be applied to the whole project.
+--
 --
 library ieee, work, std;
 use ieee.std_logic_1164.all;

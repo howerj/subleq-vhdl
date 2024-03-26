@@ -232,6 +232,31 @@ can be pasted into [GraphvizOnline][].
 	  halt -> halt;
 	}
 
+## Synthesis report
+
+This is taken from a synthesis report (built using Xilinx ISE version 14.7) and
+edited to remove redundant information so it fits on the screen, this was taken
+from commit `28b35357db93a7e50f15f65377a3206afa66e265`.
+
+	+---------------------------------------------------------------+
+	| Module     | Slices | Slice Reg | LUTs    | BRAM/FIFO | BUFG  |
+	+---------------------------------------------------------------+
+	| top/       | 3/64   | 9/113     | 1/190   | 0/8       | 1/1   |
+	| +system    | 1/37   | 0/55      | 0/124   | 0/8       | 0/0   |
+	| ++bram     | 0/0    | 0/0       | 0/0     | 8/8       | 0/0   |
+	| ++cpu      | 36/36  | 55/55     | 124/124 | 0/0       | 0/0   |
+	| +uart_rx_0 | 12/12  | 24/24     | 39/39   | 0/0       | 0/0   |
+	| +uart_tx_0 | 12/12  | 25/25     | 26/26   | 0/0       | 0/0   |
+	+---------------------------------------------------------------+
+	* No LUTRAM/DSP48A1/BUFIO/BUFR/DCM/PLL_ADV were used in this design.
+
+As you can see the system is quite small. However there is still room for
+improvement in terms of CPU size at least. A similar project,
+<https://github.com/howerj/bit-serial>, implements a 16-bit bit-serial CPU,
+which despite having more instructions is smaller than this already quite tiny
+SUBLEQ CPU. A bit-serial SUBLEQ CPU, perhaps a project for a different time,
+would be perhaps smaller still (whilst being much slower, glacial even).
+
 ## To Do and Wish List
 
 * [x] Do core implementation
@@ -253,12 +278,7 @@ can be pasted into [GraphvizOnline][].
 * [x] Use ttygif/ttyrec to record a terminal session showing the simulation, synthesis
       and running the C simulator.
 * [x] Make cut-down and special SUBLEQ eForth image for the smaller (16KiB) BRAM
-* [ ] Make one big VHDL file containing an initial Forth image and place it in `subleq.vhd`?
-  * [x] Add a component that combines the Block RAM and SUBLEQ into one along
-    with a test bench for it
-  * [x] Merge new module into main system.
-* [ ] Get implementation working in hardware (need an FPGA board for this)
-* [ ] Improve the SUBLEQ Core and system
+* [x] Improve the SUBLEQ Core and system
   * [x] Currently there is no way for the SUBLEQ core to signal that it
         is waiting on I/O. A `paused` line when either the `pause` line
         is asserted, or when we are waiting for input or output would
@@ -277,8 +297,16 @@ can be pasted into [GraphvizOnline][].
         transitions in CPU (down from 8 to 6).
   * [x] Hook up `blocked` and `halted` to an LED? (The `blocked` line would
         need some kind of pulse lengthening to become visible) (will not do)
-  * [ ] Find way of interacting with other hardware
-  * [ ] Optimize SUBLEQ design for slice area (and speed if possible)
+  * [x] Find way of interacting with other hardware (A mechanism has been
+        proposed, but not implemented).
+  * [x] Optimize SUBLEQ design for slice area (and speed if possible) (further
+        improvements are always possible...)
+* [ ] Make one big VHDL file containing an initial Forth image and place it in `subleq.vhd`?
+  * [x] Add a component that combines the Block RAM and SUBLEQ into one along
+    with a test bench for it
+  * [x] Merge new module into main system.
+  * [ ] Make a big file with everything in it.
+* [ ] Get implementation working in hardware (need an FPGA board for this)
 
 ## Other SUBLEQ projects
 
