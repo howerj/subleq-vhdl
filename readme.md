@@ -7,7 +7,7 @@
 
 **This project is a work in progress. The VHDL simulation works, along
 with the eForth interpreter that runs on it, but the project has not
-been tested on an actual FPGA (it does synthesize).**.
+been tested on an actual FPGA (it does synthesize)**.
 
 This project contains a 16-bit SUBLEQ CPU written in VHDL that should
 run on an FPGA (it is unlikely to be tested in actual hardware anytime
@@ -56,7 +56,7 @@ consists of spaced delimited ASCII signed decimal values (currently
 only one value is allowed per line, many SUBLEQ programs are stored all                                                                
 on one line with only spaces as separators).
 
-Weird/"non-standard" things include:
+Weird/"non-standard" things that this implementation *avoids* include:
 
 - Not having a way to halt the CPU.
 - Having different bit widths for various operands.
@@ -165,7 +165,8 @@ Type `words` to see a list of defined Forth words.
 
 Hitting `ctrl-d` will not quit the interpreter, you must type `bye` (or
 kill with `ctrl-c` if `ctrl-d` has been used to close the input stream
-already).
+already). This has been done for reasons of compatibility with the
+image running on the hardware.
 
 Type:
 

@@ -1186,7 +1186,7 @@ root[
 :s (comp)
   r> [ {last} ] literal @ cfa
   ( check we are running does> on a created word )
-  @+ [ to' (var) half ] literal <> [ -$1F ] literal and throw
+\  @+ [ to' (var) half ] literal <> [ -$1F ] literal and throw
   ! ;s compile-only
 : does> compile (comp) compile (does) ;
    immediate compile-only
